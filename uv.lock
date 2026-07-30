@@ -1938,7 +1938,7 @@ wheels = [
 
 [[package]]
 name = "wcgw"
-version = "5.6.2"
+version = "5.6.4"
 source = { editable = "." }
 dependencies = [
     { name = "anthropic" },
@@ -1988,28 +1988,28 @@ types = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", specifier = ">=0.39.0" },
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "mcp", specifier = ">=1.23.0" },
-    { name = "openai", specifier = ">=1.46.0" },
-    { name = "petname", specifier = ">=2.6" },
-    { name = "pexpect", specifier = ">=4.9.0" },
-    { name = "psutil", specifier = ">=7.0.0" },
-    { name = "pydantic", specifier = ">=2.9.2" },
-    { name = "pygit2", specifier = ">=1.16.0" },
-    { name = "pyte", specifier = ">=0.8.2" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "rich", specifier = ">=13.8.1" },
-    { name = "semantic-version", specifier = ">=2.10.0" },
+    { name = "anthropic", specifier = ">=0.39.0,<1" },
+    { name = "fastapi", specifier = ">=0.115.0,<1" },
+    { name = "mcp", specifier = ">=1.23.0,<2" },
+    { name = "openai", specifier = ">=1.46.0,<3" },
+    { name = "petname", specifier = ">=2.6,<3" },
+    { name = "pexpect", specifier = ">=4.9.0,<5" },
+    { name = "psutil", specifier = ">=7.0.0,<8" },
+    { name = "pydantic", specifier = ">=2.9.2,<3" },
+    { name = "pygit2", specifier = ">=1.16.0,<2" },
+    { name = "pyte", specifier = ">=0.8.2,<1" },
+    { name = "python-dotenv", specifier = ">=1.0.1,<2" },
+    { name = "rich", specifier = ">=13.8.1,<15" },
+    { name = "semantic-version", specifier = ">=2.10.0,<3" },
     { name = "syntax-checker", specifier = "==0.4.0" },
-    { name = "tokenizers", specifier = ">=0.21.0" },
-    { name = "toml", specifier = ">=0.10.2" },
-    { name = "tree-sitter", specifier = ">=0.24.0" },
-    { name = "tree-sitter-bash", specifier = ">=0.23.3" },
-    { name = "typer", specifier = ">=0.12.5" },
-    { name = "uvicorn", specifier = ">=0.31.0" },
-    { name = "wcmatch", specifier = ">=10.1" },
-    { name = "websockets", specifier = ">=13.1" },
+    { name = "tokenizers", specifier = ">=0.21.0,<1" },
+    { name = "toml", specifier = ">=0.10.2,<1" },
+    { name = "tree-sitter", specifier = ">=0.24.0,<1" },
+    { name = "tree-sitter-bash", specifier = ">=0.23.3,<1" },
+    { name = "typer", specifier = ">=0.12.5,<1" },
+    { name = "uvicorn", specifier = ">=0.31.0,<1" },
+    { name = "wcmatch", specifier = ">=10.1,<11" },
+    { name = "websockets", specifier = ">=13.1,<17" },
 ]
 
 [package.metadata.requires-dev]
