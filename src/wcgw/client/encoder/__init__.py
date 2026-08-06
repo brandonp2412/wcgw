@@ -3,7 +3,7 @@ from typing import Protocol, TypeVar
 
 T = TypeVar("T")
 
-CHARS_PER_TOKEN = 3.5
+CHARS_PER_TOKEN = 3
 
 
 class EncoderDecoder(Protocol[T]):
@@ -13,12 +13,12 @@ class EncoderDecoder(Protocol[T]):
 
 
 def estimate_tokens(text: str) -> int:
-    """Estimate token count assuming ~3.5 characters per token."""
+    """Estimate token count assuming ~3 characters per token."""
     return math.ceil(len(text) / CHARS_PER_TOKEN)
 
 
 class CharCountEncoder:
-    """Character based token estimator (~3.5 chars per token).
+    """Character based token estimator (~3 chars per token).
 
     Each estimated token encodes a chunk of the original text, so truncating
     the token list and decoding it back yields a valid truncated text.
