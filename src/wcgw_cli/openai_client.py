@@ -29,7 +29,6 @@ from wcgw.client.tool_prompts import TOOL_PROMPTS
 from wcgw.client.tools import (
     Context,
     ImageData,
-    default_enc,
     get_tool_output,
     initialize,
     which_tool,
@@ -120,9 +119,7 @@ def loop(
             _, memory, _ = load_memory(
                 resume,
                 24000,  # coding_max_tokens
-                8000,   # noncoding_max_tokens
-                lambda x: default_enc.encoder(x),
-                lambda x: default_enc.decoder(x),
+                8000,  # noncoding_max_tokens
             )
         except OSError:
             if resume == "latest":
@@ -186,7 +183,7 @@ def loop(
             [],
             resume if (memory and resume) else "",
             24000,  # coding_max_tokens
-            8000,   # noncoding_max_tokens
+            8000,  # noncoding_max_tokens
             mode="wcgw",
             thread_id="",
         )
@@ -278,11 +275,10 @@ def loop(
                                     output_or_dones, cost_ = get_tool_output(
                                         context,
                                         json.loads(tool_args),
-                                        default_enc,
                                         limit - cost,
                                         loop,
                                         24000,  # coding_max_tokens
-                                        8000,   # noncoding_max_tokens
+                                        8000,  # noncoding_max_tokens
                                     )
                                     output_or_done = output_or_dones[0]
                                 except Exception as e:

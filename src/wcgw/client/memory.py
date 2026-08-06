@@ -2,7 +2,7 @@ import json
 import os
 import re
 import shlex
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 from ..types_ import ContextSave
 
@@ -66,8 +66,6 @@ def load_memory(
     task_id: str,
     coding_max_tokens: Optional[int],
     noncoding_max_tokens: Optional[int],
-    encoder: Callable[[str], list[T]],
-    decoder: Callable[[list[T]], str],
 ) -> tuple[str, str, Optional[dict[str, Any]]]:
     app_dir = get_app_dir_xdg()
     memory_dir = os.path.join(app_dir, "memory")
@@ -79,11 +77,8 @@ def load_memory(
     # Memory files are considered non-code files for token limits
     max_tokens = noncoding_max_tokens
     if max_tokens:
-        toks = encoder(data)
-        if len(toks) > max_tokens:
-            toks = toks[: max(0, max_tokens - 10)]
-            data = decoder(toks)
-            data += "\n(... truncated)"
+        if len(data) // 3 > max_tokens:
+            data = data[: max(0, max_tokens - 20) * 3] + "\n(... truncated)"
 
     project_root_match = re.search(r"# PROJECT ROOT = \s*(.*?)\s*$", data, re.MULTILINE)
     project_root_path = ""

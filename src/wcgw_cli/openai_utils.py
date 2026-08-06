@@ -8,7 +8,11 @@ from openai.types.chat import (
 )
 
 from wcgw.client.common import CostData, History
-from wcgw.client.encoder import estimate_tokens
+
+
+def estimate_tokens(text: str) -> int:
+    """Estimate token count assuming ~3 characters per token."""
+    return len(text) // 3
 
 
 def get_input_cost(cost_map: CostData, history: History) -> tuple[float, int]:

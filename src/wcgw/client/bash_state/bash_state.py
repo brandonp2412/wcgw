@@ -36,7 +36,6 @@ from ...types_ import (
     SendText,
     StatusCheck,
 )
-from ..encoder import EncoderDecoder
 from ..modes import BashCommandMode, FileEditMode, WriteIfEmptyMode
 from .parser.bash_statement_parser import BashStatementParser
 
@@ -1183,7 +1182,6 @@ def is_status_check(arg: BashCommand) -> bool:
 
 def execute_bash(
     bash_state: BashState,
-    enc: EncoderDecoder[int],
     bash_arg: BashCommand,
     max_tokens: Optional[int],  # This will be noncoding_max_tokens
     timeout_s: Optional[float],
@@ -1198,7 +1196,7 @@ def execute_bash(
                     0.0,
                 )
 
-        output, cost = _execute_bash(bash_state, enc, bash_arg, max_tokens, timeout_s)
+        output, cost = _execute_bash(bash_state, bash_arg, max_tokens, timeout_s)
 
         # Remove echo if it's a command
         if isinstance(bash_arg.action_json, Command):
@@ -1251,7 +1249,6 @@ def get_bg_running_commandsinfo(bash_state: BashState) -> str:
 
 def _execute_bash(
     bash_state: BashState,
-    enc: EncoderDecoder[int],
     bash_arg: BashCommand,
     max_tokens: Optional[int],  # This will be noncoding_max_tokens
     timeout_s: Optional[float],
@@ -1401,11 +1398,9 @@ def _execute_bash(
         if not second_wait_success:
             bash_state.set_pending(text)
 
-            tokens = enc.encoder(incremental_text)
-
-            if max_tokens and len(tokens) >= max_tokens:
-                incremental_text = "(...truncated)\n" + enc.decoder(
-                    tokens[-(max_tokens - 1) :]
+            if max_tokens and len(incremental_text) // 3 >= max_tokens:
+                incremental_text = (
+                    "(...truncated)\n" + incremental_text[-(max_tokens * 3 - 1) :]
                 )
 
             if is_interrupt:
@@ -1434,9 +1429,8 @@ You may want to try Ctrl-c again or program specific exit interactive commands.
     output = _incremental_text(before, bash_state.pending_output)
     bash_state.set_repl()
 
-    tokens = enc.encoder(output)
-    if max_tokens and len(tokens) >= max_tokens:
-        output = "(...truncated)\n" + enc.decoder(tokens[-(max_tokens - 1) :])
+    if max_tokens and len(output) // 3 >= max_tokens:
+        output = "(...truncated)\n" + output[-(max_tokens * 3 - 1) :]
 
     try:
         exit_status = get_status(bash_state, is_bg)

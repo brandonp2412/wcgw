@@ -18,7 +18,6 @@ from ...types_ import (
 from ..bash_state.bash_state import CONFIG, BashState, get_tmpdir
 from ..tools import (
     Context,
-    default_enc,
     get_tool_output,
     parse_tool_by_name,
     which_tool_name,
@@ -107,7 +106,6 @@ async def handle_call_tool(
         output_or_dones, _ = get_tool_output(
             Context(BASH_STATE, BASH_STATE.console),
             tool_call,
-            default_enc,
             0.0,
             lambda x, y: ("", 0),
             24000,  # coding_max_tokens

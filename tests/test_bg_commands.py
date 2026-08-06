@@ -12,7 +12,6 @@ from wcgw.client.tools import (
     BashCommand,
     Context,
     Initialize,
-    default_enc,
     get_tool_output,
 )
 from wcgw.types_ import (
@@ -70,7 +69,7 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
         thread_id="",
     )
     get_tool_output(
-        ctx, init_args, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        ctx, init_args, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     yield ctx
@@ -95,7 +94,7 @@ def test_bg_command_basic(context: Context, temp_dir: str) -> None:
         )
     )
     outputs, _ = get_tool_output(
-        context, cmd, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     assert len(outputs) == 1
@@ -126,7 +125,7 @@ def test_bg_command_status_check(context: Context, temp_dir: str) -> None:
         )
     )
     outputs, _ = get_tool_output(
-        context, cmd, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     # Extract bg_command_id
@@ -147,7 +146,7 @@ def test_bg_command_status_check(context: Context, temp_dir: str) -> None:
         )
     )
     outputs, _ = get_tool_output(
-        context, status_cmd, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, status_cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     assert len(outputs) == 1
@@ -168,7 +167,7 @@ def test_bg_command_invalid_id(context: Context, temp_dir: str) -> None:
 
     try:
         outputs, _ = get_tool_output(
-            context, status_cmd, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+            context, status_cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
         )
         assert False, "Expected exception for invalid bg_command_id"
     except Exception as e:
@@ -188,7 +187,7 @@ def test_bg_command_interrupt(context: Context, temp_dir: str) -> None:
         )
     )
     outputs, _ = get_tool_output(
-        context, cmd, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     # Extract bg_command_id
@@ -209,7 +208,7 @@ def test_bg_command_interrupt(context: Context, temp_dir: str) -> None:
         )
     )
     outputs, _ = get_tool_output(
-        context, interrupt_cmd, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, interrupt_cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     assert len(outputs) == 1
@@ -229,7 +228,7 @@ def test_multiple_bg_commands(context: Context, temp_dir: str) -> None:
         )
     )
     outputs1, _ = get_tool_output(
-        context, cmd1, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, cmd1, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     # Start second background command
@@ -242,7 +241,7 @@ def test_multiple_bg_commands(context: Context, temp_dir: str) -> None:
         )
     )
     outputs2, _ = get_tool_output(
-        context, cmd2, default_enc, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+        context, cmd2, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
     # Verify both commands are running
