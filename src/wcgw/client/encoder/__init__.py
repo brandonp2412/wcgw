@@ -1,9 +1,9 @@
-import threading
-from typing import Callable, Protocol, TypeVar, cast
-
-import tokenizers  # type: ignore[import-untyped]
+import math
+from typing import Protocol, TypeVar
 
 T = TypeVar("T")
+
+CHARS_PER_TOKEN = 3.5
 
 
 class EncoderDecoder(Protocol[T]):
@@ -12,36 +12,44 @@ class EncoderDecoder(Protocol[T]):
     def decoder(self, tokens: list[T]) -> str: ...
 
 
-class LazyEncoder:
-    def __init__(self) -> None:
-        self._tokenizer: tokenizers.Tokenizer | None = None
-        self._init_lock = threading.Lock()
-        self._init_thread = threading.Thread(target=self._initialize, daemon=True)
-        self._init_thread.start()
+def estimate_tokens(text: str) -> int:
+    """Estimate token count assuming ~3.5 characters per token."""
+    return math.ceil(len(text) / CHARS_PER_TOKEN)
 
-    def _initialize(self) -> None:
-        with self._init_lock:
-            if self._tokenizer is None:
-                self._tokenizer = tokenizers.Tokenizer.from_pretrained(
-                    "Xenova/claude-tokenizer"
-                )
 
-    def _ensure_initialized(self) -> None:
-        if self._tokenizer is None:
-            with self._init_lock:
-                if self._tokenizer is None:
-                    self._init_thread.join()
+class CharCountEncoder:
+    """Character based token estimator (~3.5 chars per token).
+
+    Each estimated token encodes a chunk of the original text, so truncating
+    the token list and decoding it back yields a valid truncated text.
+    """
 
     def encoder(self, text: str) -> list[int]:
-        self._ensure_initialized()
-        assert self._tokenizer is not None, "Couldn't initialize tokenizer"
-        return cast(list[int], self._tokenizer.encode(text).ids)
+        n = len(text)
+        ntokens = estimate_tokens(text)
+        if ntokens == 0:
+            return []
+        base, remainder = divmod(n, ntokens)
+        tokens: list[int] = []
+        i = 0
+        for t in range(ntokens):
+            size = base + (1 if t < remainder else 0)
+            chunk = text[i : i + size]
+            i += size
+            # Prefix a non-zero byte so the byte length is unambiguously
+            # recoverable from the int value.
+            tokens.append(int.from_bytes(b"\x01" + chunk.encode("utf-8"), "big"))
+        return tokens
 
     def decoder(self, tokens: list[int]) -> str:
-        self._ensure_initialized()
-        assert self._tokenizer is not None, "Couldn't initialize tokenizer"
-        return cast(str, self._tokenizer.decode(tokens))
+        parts: list[str] = []
+        for token in tokens:
+            nbytes = (token.bit_length() + 7) // 8
+            parts.append(
+                token.to_bytes(nbytes, "big")[1:].decode("utf-8", errors="replace")
+            )
+        return "".join(parts)
 
 
 def get_default_encoder() -> EncoderDecoder[int]:
-    return LazyEncoder()
+    return CharCountEncoder()

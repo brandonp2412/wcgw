@@ -12,7 +12,6 @@ from typing import DefaultDict, Optional, cast
 import openai
 import petname  # type: ignore[import-untyped]
 import rich
-import tokenizers  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import (
@@ -156,8 +155,6 @@ def loop(
         config.cost_limit = limit
     limit = config.cost_limit
 
-    enc = tokenizers.Tokenizer.from_pretrained("Xenova/gpt-4o")
-
     tools = [
         openai.pydantic_function_tool(
             which_tool_name(tool.name), description=tool.description
@@ -220,9 +217,7 @@ def loop(
             else:
                 waiting_for_assistant = False
 
-            cost_, input_toks_ = get_input_cost(
-                config.cost_file[config.model], enc, history
-            )
+            cost_, input_toks_ = get_input_cost(config.cost_file[config.model], history)
             cost += cost_
             input_toks += input_toks_
 
@@ -265,7 +260,7 @@ def loop(
                             ],
                         }
                         cost_, output_toks_ = get_output_cost(
-                            config.cost_file[config.model], enc, item
+                            config.cost_file[config.model], item
                         )
                         cost += cost_
                         system_console.print(
@@ -283,7 +278,7 @@ def loop(
                                     output_or_dones, cost_ = get_tool_output(
                                         context,
                                         json.loads(tool_args),
-                                        enc,
+                                        default_enc,
                                         limit - cost,
                                         loop,
                                         24000,  # coding_max_tokens
@@ -353,7 +348,7 @@ def loop(
                                         "tool_call_id": tool_call_id + str(toolindex),
                                     }
                                 cost_, output_toks_ = get_output_cost(
-                                    config.cost_file[config.model], enc, item
+                                    config.cost_file[config.model], item
                                 )
                                 cost += cost_
                                 output_toks += output_toks_
@@ -368,7 +363,7 @@ def loop(
                             "content": full_response,
                         }
                         cost_, output_toks_ = get_output_cost(
-                            config.cost_file[config.model], enc, item
+                            config.cost_file[config.model], item
                         )
                         cost += cost_
                         output_toks += output_toks_
