@@ -167,7 +167,7 @@ def get_repo_context(file_or_repo_path: str) -> tuple[str, Path]:
 
     # Determine the context directory
     if repo is not None:
-        context_dir = Path(repo.path).parent
+        context_dir = Path(repo.workdir) if repo.workdir else Path(repo.path).parent
     else:
         if file_or_repo_path_.is_file():
             context_dir = file_or_repo_path_.parent
