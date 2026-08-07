@@ -57,7 +57,6 @@ from ..types_ import (
     ReadImage,
     WriteIfEmpty,
 )
-from .encoder import EncoderDecoder, get_default_encoder
 from .file_ops.extensions import select_max_tokens
 from .file_ops.search_replace import (
     SEARCH_MARKER,
@@ -140,8 +139,6 @@ def initialize(
                 task_id_to_resume,
                 coding_max_tokens,
                 noncoding_max_tokens,
-                lambda x: default_enc.encoder(x),
-                lambda x: default_enc.decoder(x),
             )
             memory = "Following is the retrieved task:\n" + task_mem
             if os.path.exists(project_root_path):
@@ -472,13 +469,8 @@ Param = ParamSpec("Param")
 
 def truncate_if_over(content: str, max_tokens: Optional[int]) -> str:
     if max_tokens and max_tokens > 0:
-        tokens = default_enc.encoder(content)
-        n_tokens = len(tokens)
-        if n_tokens > max_tokens:
-            content = (
-                default_enc.decoder(tokens[: max(0, max_tokens - 100)])
-                + "\n(...truncated)"
-            )
+        if len(content) // 3 > max_tokens:
+            content = content[: max_tokens * 3] + "\n(...truncated)"
 
     return content
 
@@ -516,8 +508,7 @@ def get_context_for_errors(
 
     max_tokens = select_max_tokens(filename, coding_max_tokens, noncoding_max_tokens)
     if max_tokens is not None and max_tokens > 0:
-        ntokens = len(default_enc.encoder(context))
-        if ntokens > max_tokens:
+        if len(context) // 3 > max_tokens:
             return "Please re-read the file to understand the context"
     return f"Here's relevant snippet from the file where the syntax errors occured:\n<snippet>\n{context}\n</snippet>"
 
@@ -949,7 +940,6 @@ TOOL_CALLS: list[TOOLS] = []
 def get_tool_output(
     context: Context,
     args: dict[object, object] | TOOLS,
-    enc: EncoderDecoder[int],
     limit: float,
     loop_call: Callable[[str, float], tuple[str, float]],
     coding_max_tokens: Optional[int],
@@ -972,7 +962,6 @@ def get_tool_output(
 
         output_str, cost = execute_bash(
             context.bash_state,
-            enc,
             arg,
             noncoding_max_tokens,
             arg.action_json.wait_for_seconds,
@@ -1133,7 +1122,6 @@ def get_tool_output(
 
 History = list[ChatCompletionMessageParam]
 
-default_enc = get_default_encoder()
 curr_cost = 0.0
 
 
@@ -1294,13 +1282,11 @@ def read_file(
 
     # Handle token limit if specified
     if max_tokens is not None:
-        tokens = default_enc.encoder(content)
-        tokens_counts = len(tokens)
+        tokens_counts = len(content) // 3
 
-        if len(tokens) > max_tokens:
+        if len(content) // 3 > max_tokens:
             # Truncate at token boundary first
-            truncated_tokens = tokens[:max_tokens]
-            truncated_content = default_enc.decoder(truncated_tokens)
+            truncated_content = content[: max_tokens * 3]
 
             # Count how many lines we kept
             line_count = truncated_content.count("\n")
@@ -1352,7 +1338,6 @@ if __name__ == "__main__":
                     mode_name="wcgw",
                     thread_id="",
                 ),
-                default_enc,
                 0,
                 lambda x, y: ("", 0),
                 24000,  # coding_max_tokens
@@ -1367,7 +1352,6 @@ if __name__ == "__main__":
                         command="pwd", thread_id=BASH_STATE.current_thread_id
                     )
                 ),
-                default_enc,
                 0,
                 lambda x, y: ("", 0),
                 24000,  # coding_max_tokens
@@ -1384,7 +1368,6 @@ if __name__ == "__main__":
                         thread_id=BASH_STATE.current_thread_id,
                     )
                 ),
-                default_enc,
                 0,
                 lambda x, y: ("", 0),
                 24000,  # coding_max_tokens
@@ -1400,7 +1383,6 @@ if __name__ == "__main__":
                         command="pwd", thread_id=BASH_STATE.current_thread_id
                     )
                 ),
-                default_enc,
                 0,
                 lambda x, y: ("", 0),
                 24000,  # coding_max_tokens
@@ -1416,7 +1398,6 @@ if __name__ == "__main__":
                         command="take src", thread_id=BASH_STATE.current_thread_id
                     )
                 ),
-                default_enc,
                 0,
                 lambda x, y: ("", 0),
                 24000,  # coding_max_tokens
@@ -1432,7 +1413,6 @@ if __name__ == "__main__":
                         command="pwd", thread_id=BASH_STATE.current_thread_id
                     )
                 ),
-                default_enc,
                 0,
                 lambda x, y: ("", 0),
                 24000,  # coding_max_tokens

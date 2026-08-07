@@ -11,7 +11,6 @@ from wcgw.client.tools import (
     Context,
     FileWriteOrEdit,
     Initialize,
-    default_enc,
     get_tool_output,
 )
 from wcgw.types_ import Console
@@ -70,7 +69,7 @@ def test_file_edit(context: Context, temp_dir: str) -> None:
         type="first_call",
     )
     get_tool_output(
-        context, init_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, init_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     # Create a test file
@@ -93,7 +92,7 @@ def hello():
     )
 
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     assert len(outputs) == 1
@@ -118,7 +117,7 @@ def hello():
     )
 
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     assert len(outputs) == 1
@@ -145,7 +144,7 @@ def hello():
 
     with pytest.raises(SearchReplaceMatchError) as e:
         outputs, _ = get_tool_output(
-            context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+            context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
         )
 
         assert """def hello():
@@ -171,7 +170,7 @@ def hello():
     )
 
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     assert len(outputs) == 1
@@ -199,7 +198,7 @@ def hello():
         )
 
         outputs, _ = get_tool_output(
-            context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+            context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
         )
 
     with pytest.raises(SearchReplaceSyntaxError) as e:
@@ -217,7 +216,7 @@ def hello():
         )
 
         outputs, _ = get_tool_output(
-            context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+            context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
         )
 
     # Test multiple matches
@@ -246,7 +245,7 @@ def hello():
         )
 
         outputs, _ = get_tool_output(
-            context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+            context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
         )
 
     # Grounding should pass even when duplicate found
@@ -271,7 +270,7 @@ def hello():
     )
 
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     with open(test_file) as f:
@@ -481,7 +480,7 @@ def test_context_based_matching(context: Context, temp_dir: str) -> None:
         type="first_call",
     )
     get_tool_output(
-        context, init_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, init_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     # Create a test file with repeating pattern
@@ -512,7 +511,7 @@ C
 >>>>>>> REPLACE""",
     )
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     # Verify the change - first B should be modified
@@ -542,7 +541,7 @@ B_MODIFIED_SECOND
 >>>>>>> REPLACE""",
     )
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     # Verify the change - second B should be modified
@@ -562,7 +561,7 @@ def test_unordered(context: Context, temp_dir: str) -> None:
         type="first_call",
     )
     get_tool_output(
-        context, init_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, init_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     # Create a test file with repeating pattern
@@ -589,7 +588,7 @@ A_MODIFIED
 """,
     )
     outputs, _ = get_tool_output(
-        context, edit_args, default_enc, 1.0, lambda x, y: ("", 0.0), None, None
+        context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
     # Verify the change - first B should be modified

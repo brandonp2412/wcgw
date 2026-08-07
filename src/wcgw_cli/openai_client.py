@@ -12,7 +12,6 @@ from typing import DefaultDict, Optional, cast
 import openai
 import petname  # type: ignore[import-untyped]
 import rich
-import tokenizers  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import (
@@ -30,7 +29,6 @@ from wcgw.client.tool_prompts import TOOL_PROMPTS
 from wcgw.client.tools import (
     Context,
     ImageData,
-    default_enc,
     get_tool_output,
     initialize,
     which_tool,
@@ -121,9 +119,7 @@ def loop(
             _, memory, _ = load_memory(
                 resume,
                 24000,  # coding_max_tokens
-                8000,   # noncoding_max_tokens
-                lambda x: default_enc.encoder(x),
-                lambda x: default_enc.decoder(x),
+                8000,  # noncoding_max_tokens
             )
         except OSError:
             if resume == "latest":
@@ -156,8 +152,6 @@ def loop(
         config.cost_limit = limit
     limit = config.cost_limit
 
-    enc = tokenizers.Tokenizer.from_pretrained("Xenova/gpt-4o")
-
     tools = [
         openai.pydantic_function_tool(
             which_tool_name(tool.name), description=tool.description
@@ -189,7 +183,7 @@ def loop(
             [],
             resume if (memory and resume) else "",
             24000,  # coding_max_tokens
-            8000,   # noncoding_max_tokens
+            8000,  # noncoding_max_tokens
             mode="wcgw",
             thread_id="",
         )
@@ -220,9 +214,7 @@ def loop(
             else:
                 waiting_for_assistant = False
 
-            cost_, input_toks_ = get_input_cost(
-                config.cost_file[config.model], enc, history
-            )
+            cost_, input_toks_ = get_input_cost(config.cost_file[config.model], history)
             cost += cost_
             input_toks += input_toks_
 
@@ -265,7 +257,7 @@ def loop(
                             ],
                         }
                         cost_, output_toks_ = get_output_cost(
-                            config.cost_file[config.model], enc, item
+                            config.cost_file[config.model], item
                         )
                         cost += cost_
                         system_console.print(
@@ -283,11 +275,10 @@ def loop(
                                     output_or_dones, cost_ = get_tool_output(
                                         context,
                                         json.loads(tool_args),
-                                        enc,
                                         limit - cost,
                                         loop,
                                         24000,  # coding_max_tokens
-                                        8000,   # noncoding_max_tokens
+                                        8000,  # noncoding_max_tokens
                                     )
                                     output_or_done = output_or_dones[0]
                                 except Exception as e:
@@ -353,7 +344,7 @@ def loop(
                                         "tool_call_id": tool_call_id + str(toolindex),
                                     }
                                 cost_, output_toks_ = get_output_cost(
-                                    config.cost_file[config.model], enc, item
+                                    config.cost_file[config.model], item
                                 )
                                 cost += cost_
                                 output_toks += output_toks_
@@ -368,7 +359,7 @@ def loop(
                             "content": full_response,
                         }
                         cost_, output_toks_ = get_output_cost(
-                            config.cost_file[config.model], enc, item
+                            config.cost_file[config.model], item
                         )
                         cost += cost_
                         output_toks += output_toks_
