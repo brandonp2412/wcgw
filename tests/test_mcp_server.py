@@ -1,5 +1,8 @@
+import asyncio
 import os
 import re
+import threading
+import time
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -39,6 +42,8 @@ def setup_bash_state():
     home_dir = os.path.expanduser("~")
     bash_state = BashState(Console(), home_dir, None, None, None, "wcgw", False, None)
     server.BASH_STATES.clear()
+    server.STATE_CALL_LOCKS.clear()
+    server.STATE_CREATION_LOCKS.clear()
     server.BASH_STATE = bash_state
     server.BASH_STATES[bash_state.current_thread_id] = bash_state
 
@@ -56,6 +61,8 @@ def setup_bash_state():
             except Exception as e:
                 print(f"Error during cleanup: {e}")
         server.BASH_STATES.clear()
+        server.STATE_CALL_LOCKS.clear()
+        server.STATE_CREATION_LOCKS.clear()
         server.BASH_STATE = None
 
 
@@ -297,6 +304,156 @@ async def test_handle_call_tool_preserves_shells_across_thread_ids(
         },
     )
     assert "status = still running" in first_status[0].text
+
+
+@pytest.mark.asyncio
+async def test_handle_call_tool_runs_different_shell_states_concurrently(
+    setup_bash_state,
+):
+    first_state = server.new_state("thread_a")
+    second_state = server.new_state("thread_b")
+    server.BASH_STATES["thread_a"] = first_state
+    server.BASH_STATES["thread_b"] = second_state
+    call_order: list[str] = []
+
+    def fake_get_tool_output(*args, **kwargs):
+        tool_call = args[1]
+        thread_id = tool_call.action_json.thread_id
+        call_order.append(f"{thread_id}:start")
+        if thread_id == "thread_a":
+            time.sleep(0.2)
+        call_order.append(f"{thread_id}:end")
+        return ["ok"], 0.0
+
+    with patch(
+        "wcgw.client.mcp_server.server.get_tool_output",
+        side_effect=fake_get_tool_output,
+    ):
+        first_call = asyncio.create_task(
+            handle_call_tool(
+                "BashCommand",
+                {"type": "command", "command": "first", "thread_id": "thread_a"},
+            )
+        )
+        await asyncio.sleep(0.02)
+        second_call = asyncio.create_task(
+            handle_call_tool(
+                "BashCommand",
+                {"type": "command", "command": "second", "thread_id": "thread_b"},
+            )
+        )
+        await asyncio.gather(first_call, second_call)
+
+    assert call_order.index("thread_b:end") < call_order.index("thread_a:end")
+
+
+@pytest.mark.asyncio
+async def test_handle_call_tool_serializes_calls_for_same_thread_id(
+    setup_bash_state,
+):
+    state = server.new_state("thread_a")
+    server.BASH_STATES["thread_a"] = state
+    counter_lock = threading.Lock()
+    active_calls = 0
+    max_active_calls = 0
+
+    def fake_get_tool_output(*args, **kwargs):
+        nonlocal active_calls, max_active_calls
+        with counter_lock:
+            active_calls += 1
+            max_active_calls = max(max_active_calls, active_calls)
+        time.sleep(0.05)
+        with counter_lock:
+            active_calls -= 1
+        return ["ok"], 0.0
+
+    with patch(
+        "wcgw.client.mcp_server.server.get_tool_output",
+        side_effect=fake_get_tool_output,
+    ):
+        await asyncio.gather(
+            handle_call_tool(
+                "BashCommand",
+                {"type": "command", "command": "first", "thread_id": "thread_a"},
+            ),
+            handle_call_tool(
+                "BashCommand",
+                {"type": "command", "command": "second", "thread_id": "thread_a"},
+            ),
+        )
+
+    assert max_active_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_first_call_state_creation_does_not_block_event_loop(setup_bash_state):
+    assert server.BASH_STATE is not None
+    created_state = server.BASH_STATE
+
+    def slow_new_state(thread_id):
+        time.sleep(0.2)
+        return created_state
+
+    with (
+        patch("wcgw.client.mcp_server.server.new_state", side_effect=slow_new_state),
+        patch(
+            "wcgw.client.mcp_server.server.get_tool_output",
+            return_value=(["ok"], 0.0),
+        ),
+    ):
+        call = asyncio.create_task(
+            handle_call_tool(
+                "Initialize",
+                {
+                    "any_workspace_path": "",
+                    "initial_files_to_read": [],
+                    "task_id_to_resume": "",
+                    "mode_name": "wcgw",
+                    "type": "first_call",
+                    "thread_id": "",
+                },
+            )
+        )
+        started = time.monotonic()
+        await asyncio.sleep(0.02)
+        elapsed = time.monotonic() - started
+        assert elapsed < 0.1
+        await call
+
+
+@pytest.mark.asyncio
+async def test_restore_is_atomic_for_same_thread_id(setup_bash_state):
+    restored_state = server.new_state("restored")
+    server.BASH_STATES.pop("restored", None)
+    restore_calls = 0
+    restore_lock = threading.Lock()
+
+    def slow_restore(thread_id):
+        nonlocal restore_calls
+        with restore_lock:
+            restore_calls += 1
+        time.sleep(0.1)
+        return restored_state
+
+    with (
+        patch("wcgw.client.mcp_server.server.restored_state", side_effect=slow_restore),
+        patch(
+            "wcgw.client.mcp_server.server.get_tool_output",
+            return_value=(["ok"], 0.0),
+        ),
+    ):
+        await asyncio.gather(
+            handle_call_tool(
+                "BashCommand",
+                {"type": "command", "command": "first", "thread_id": "restored"},
+            ),
+            handle_call_tool(
+                "BashCommand",
+                {"type": "command", "command": "second", "thread_id": "restored"},
+            ),
+        )
+
+    assert restore_calls == 1
 
 
 @pytest.mark.asyncio

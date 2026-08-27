@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from importlib import metadata
@@ -106,19 +107,21 @@ async def handle_call_tool(
 
     tool_type = which_tool_name(name)
     tool_call = parse_tool_by_name(name, arguments)
-    state = state_for_tool(tool_call)
+    state = await state_for_tool(tool_call)
 
     try:
         if isinstance(tool_call, FileWriteOrEdit):
             sync_legacy_whitelist_into_state(state)
-        output_or_dones, _ = get_tool_output(
-            Context(state, state.console),
-            tool_call,
-            0.0,
-            lambda x, y: ("", 0),
-            24000,  # coding_max_tokens
-            8000,  # noncoding_max_tokens
-        )
+        async with state_call_lock(state.current_thread_id):
+            output_or_dones, _ = await asyncio.to_thread(
+                get_tool_output,
+                Context(state, state.console),
+                tool_call,
+                0.0,
+                lambda x, y: ("", 0),
+                24000,  # coding_max_tokens
+                8000,  # noncoding_max_tokens
+            )
 
     except Exception as e:
         output_or_dones = [f"GOT EXCEPTION while calling tool. Error: {e}"]
@@ -155,9 +158,27 @@ Initialize call done.
 
 BASH_STATE: BashState | None = None
 BASH_STATES: dict[str, BashState] = {}
+STATE_CALL_LOCKS: dict[str, asyncio.Lock] = {}
+STATE_CREATION_LOCKS: dict[str, asyncio.Lock] = {}
 CUSTOM_INSTRUCTIONS = None
 STARTING_DIR = ""
 SHELL_PATH = ""
+
+
+def state_call_lock(thread_id: str) -> asyncio.Lock:
+    lock = STATE_CALL_LOCKS.get(thread_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        STATE_CALL_LOCKS[thread_id] = lock
+    return lock
+
+
+def state_creation_lock(thread_id: str) -> asyncio.Lock:
+    lock = STATE_CREATION_LOCKS.get(thread_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        STATE_CREATION_LOCKS[thread_id] = lock
+    return lock
 
 
 def new_state(thread_id: str | None) -> BashState:
@@ -199,9 +220,9 @@ def restored_state(thread_id: str) -> BashState | None:
     return None
 
 
-def state_for_tool(tool_call: TOOLS) -> BashState:
+async def state_for_tool(tool_call: TOOLS) -> BashState:
     if isinstance(tool_call, Initialize) and tool_call.type == "first_call":
-        new = new_state(None)
+        new = await asyncio.to_thread(new_state, None)
         BASH_STATES[new.current_thread_id] = new
         return new
 
@@ -215,14 +236,19 @@ def state_for_tool(tool_call: TOOLS) -> BashState:
     if existing is not None:
         return existing
 
-    restored = restored_state(thread_id)
-    if restored is None:
-        raise ValueError(
-            f"No saved WCGW state exists for thread_id `{thread_id}`; initialize it first"
-        )
-    sync_legacy_whitelist_into_state(restored)
-    BASH_STATES[thread_id] = restored
-    return restored
+    async with state_creation_lock(thread_id):
+        existing = BASH_STATES.get(thread_id)
+        if existing is not None:
+            return existing
+
+        restored = await asyncio.to_thread(restored_state, thread_id)
+        if restored is None:
+            raise ValueError(
+                f"No saved WCGW state exists for thread_id `{thread_id}`; initialize it first"
+            )
+        sync_legacy_whitelist_into_state(restored)
+        BASH_STATES[thread_id] = restored
+        return restored
 
 
 async def main(shell_path: str = "") -> None:
