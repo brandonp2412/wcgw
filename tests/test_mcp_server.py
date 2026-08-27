@@ -1,4 +1,5 @@
 import os
+import re
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -37,15 +38,23 @@ def setup_bash_state():
     # Create new BashState with mode
     home_dir = os.path.expanduser("~")
     bash_state = BashState(Console(), home_dir, None, None, None, "wcgw", False, None)
+    server.BASH_STATES.clear()
     server.BASH_STATE = bash_state
 
     try:
         yield server.BASH_STATE
     finally:
-        try:
-            bash_state.cleanup()
-        except Exception as e:
-            print(f"Error during cleanup: {e}")
+        states = {
+            id(state): state
+            for state in [bash_state, server.BASH_STATE, *server.BASH_STATES.values()]
+            if state is not None
+        }
+        for state in states.values():
+            try:
+                state.cleanup()
+            except Exception as e:
+                print(f"Error during cleanup: {e}")
+        server.BASH_STATES.clear()
         server.BASH_STATE = None
 
 
@@ -210,6 +219,71 @@ async def test_handle_call_tool(setup_bash_state):
             },
         )
         assert "GOT EXCEPTION" in result[0].text
+
+
+@pytest.mark.asyncio
+async def test_handle_call_tool_preserves_shells_across_thread_ids(
+    setup_bash_state, tmp_path
+):
+    first_workspace = tmp_path / "first"
+    second_workspace = tmp_path / "second"
+    first_workspace.mkdir()
+    second_workspace.mkdir()
+
+    init_args = {
+        "initial_files_to_read": [],
+        "task_id_to_resume": "",
+        "mode_name": "wcgw",
+        "type": "first_call",
+        "thread_id": "",
+    }
+    first_init = await handle_call_tool(
+        "Initialize", {**init_args, "any_workspace_path": str(first_workspace)}
+    )
+    first_match = re.search(r"Use thread_id=(\w+)", first_init[0].text)
+    assert first_match is not None
+    first_thread_id = first_match.group(1)
+
+    pending = await handle_call_tool(
+        "BashCommand",
+        {
+            "type": "command",
+            "command": "sleep 10",
+            "thread_id": first_thread_id,
+            "wait_for_seconds": 0.1,
+        },
+    )
+    assert "status = still running" in pending[0].text
+
+    second_init = await handle_call_tool(
+        "Initialize", {**init_args, "any_workspace_path": str(second_workspace)}
+    )
+    second_match = re.search(r"Use thread_id=(\w+)", second_init[0].text)
+    assert second_match is not None
+    second_thread_id = second_match.group(1)
+    assert second_thread_id != first_thread_id
+
+    second_pwd = await handle_call_tool(
+        "BashCommand",
+        {
+            "type": "command",
+            "command": "pwd",
+            "thread_id": second_thread_id,
+            "wait_for_seconds": 0.5,
+        },
+    )
+    assert str(second_workspace) in second_pwd[0].text
+
+    first_status = await handle_call_tool(
+        "BashCommand",
+        {
+            "type": "status_check",
+            "status_check": True,
+            "thread_id": first_thread_id,
+            "wait_for_seconds": 0.1,
+        },
+    )
+    assert "status = still running" in first_status[0].text
 
 
 @pytest.mark.asyncio

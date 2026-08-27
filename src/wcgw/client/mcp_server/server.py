@@ -13,10 +13,13 @@ from wcgw.client.modes import KTS
 from wcgw.client.tool_prompts import TOOL_PROMPTS
 
 from ...types_ import (
+    BashCommand,
+    FileWriteOrEdit,
     Initialize,
 )
 from ..bash_state.bash_state import CONFIG, BashState, get_tmpdir
 from ..tools import (
+    TOOLS,
     Context,
     get_tool_output,
     parse_tool_by_name,
@@ -100,17 +103,19 @@ async def handle_call_tool(
 
     tool_type = which_tool_name(name)
     tool_call = parse_tool_by_name(name, arguments)
+    state = state_for_tool(tool_call)
+    BASH_STATE = state
 
     try:
-        assert BASH_STATE
         output_or_dones, _ = get_tool_output(
-            Context(BASH_STATE, BASH_STATE.console),
+            Context(state, state.console),
             tool_call,
             0.0,
             lambda x, y: ("", 0),
             24000,  # coding_max_tokens
             8000,  # noncoding_max_tokens
         )
+        BASH_STATES[state.current_thread_id] = state
 
     except Exception as e:
         output_or_dones = [f"GOT EXCEPTION while calling tool. Error: {e}"]
@@ -145,8 +150,68 @@ Initialize call done.
     return content
 
 
-BASH_STATE = None
+BASH_STATE: BashState | None = None
+BASH_STATES: dict[str, BashState] = {}
 CUSTOM_INSTRUCTIONS = None
+
+
+def new_state(thread_id: str | None) -> BashState:
+    template = BASH_STATE
+    working_dir = (
+        template.cwd
+        if template is not None
+        else os.path.join(get_tmpdir(), "claude_playground")
+    )
+    use_screen = template.over_screen if template is not None else True
+    shell_path = template.shell_path if template is not None else os.environ.get(
+        "SHELL", "/bin/bash"
+    )
+    return BashState(
+        Console(),
+        working_dir,
+        None,
+        None,
+        None,
+        None,
+        use_screen,
+        None,
+        thread_id,
+        shell_path,
+    )
+
+
+def tool_thread_id(tool_call: TOOLS) -> str:
+    if isinstance(tool_call, BashCommand):
+        return tool_call.action_json.thread_id
+    if isinstance(tool_call, (Initialize, FileWriteOrEdit)):
+        return tool_call.thread_id
+    return ""
+
+
+def restored_state(thread_id: str) -> BashState | None:
+    state = new_state(None)
+    if state.load_state_from_thread_id(thread_id):
+        return state
+    state.cleanup()
+    return None
+
+
+def state_for_tool(tool_call: TOOLS) -> BashState:
+    if isinstance(tool_call, Initialize) and tool_call.type == "first_call":
+        return new_state(None)
+
+    thread_id = tool_thread_id(tool_call)
+    if thread_id:
+        state = BASH_STATES.get(thread_id)
+        if state is not None:
+            return state
+        state = restored_state(thread_id)
+        if state is not None:
+            BASH_STATES[thread_id] = state
+            return state
+
+    assert BASH_STATE
+    return BASH_STATE
 
 
 async def main(shell_path: str = "") -> None:
@@ -161,7 +226,7 @@ async def main(shell_path: str = "") -> None:
     tmp_dir = get_tmpdir()
     starting_dir = os.path.join(tmp_dir, "claude_playground")
 
-    with BashState(
+    BASH_STATE = BashState(
         Console(),
         starting_dir,
         None,
@@ -172,8 +237,9 @@ async def main(shell_path: str = "") -> None:
         None,
         None,
         shell_path or None,
-    ) as BASH_STATE:
-        BASH_STATE.console.log("wcgw version: " + version)
+    )
+    BASH_STATE.console.log("wcgw version: " + version)
+    try:
         # Run the server using stdin/stdout streams
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
             await server.run(
@@ -189,3 +255,14 @@ async def main(shell_path: str = "") -> None:
                 ),
                 raise_exceptions=False,
             )
+    finally:
+        states = {
+            id(state): state
+            for state in [BASH_STATE, *BASH_STATES.values()]
+            if state is not None
+        }
+        for state in states.values():
+            try:
+                state.cleanup()
+            except Exception:
+                logger.exception("failed to clean up WCGW shell state")
