@@ -1,13 +1,18 @@
 import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 from importlib import metadata
-from typing import Any
+from typing import Any, AsyncIterator
 
 import mcp.server.stdio
 import mcp.types as types
+import uvicorn
+from fastapi import FastAPI
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyUrl
 
 from wcgw.client.modes import KTS
@@ -251,19 +256,13 @@ async def state_for_tool(tool_call: TOOLS) -> BashState:
         return restored
 
 
-async def main(shell_path: str = "") -> None:
+def configure_server(shell_path: str) -> str:
     global BASH_STATE, CUSTOM_INSTRUCTIONS, STARTING_DIR, SHELL_PATH
     CONFIG.update(3, 55, 5)
     version = str(metadata.version("wcgw"))
-
-    # Read custom instructions from environment variable
     CUSTOM_INSTRUCTIONS = os.getenv("WCGW_SERVER_INSTRUCTIONS")
-
-    # starting_dir is inside tmp dir
-    tmp_dir = get_tmpdir()
-    STARTING_DIR = os.path.join(tmp_dir, "claude_playground")
+    STARTING_DIR = os.path.join(get_tmpdir(), "claude_playground")
     SHELL_PATH = shell_path
-
     BASH_STATE = BashState(
         Console(),
         STARTING_DIR,
@@ -277,8 +276,30 @@ async def main(shell_path: str = "") -> None:
         SHELL_PATH or None,
     )
     BASH_STATE.console.log("wcgw version: " + version)
+    return version
+
+
+def cleanup_states() -> None:
+    global BASH_STATE
+    states = {
+        id(state): state
+        for state in [BASH_STATE, *BASH_STATES.values()]
+        if state is not None
+    }
+    for state in states.values():
+        try:
+            state.cleanup()
+        except Exception:
+            logger.exception("failed to clean up WCGW shell state")
+    BASH_STATES.clear()
+    STATE_CALL_LOCKS.clear()
+    STATE_CREATION_LOCKS.clear()
+    BASH_STATE = None
+
+
+async def main(shell_path: str = "") -> None:
+    version = configure_server(shell_path)
     try:
-        # Run the server using stdin/stdout streams
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
             await server.run(
                 read_stream,
@@ -294,13 +315,37 @@ async def main(shell_path: str = "") -> None:
                 raise_exceptions=False,
             )
     finally:
-        states = {
-            id(state): state
-            for state in [BASH_STATE, *BASH_STATES.values()]
-            if state is not None
-        }
-        for state in states.values():
-            try:
-                state.cleanup()
-            except Exception:
-                logger.exception("failed to clean up WCGW shell state")
+        cleanup_states()
+
+
+def streamable_http_app(shell_path: str, host: str, port: int) -> FastAPI:
+    configure_server(shell_path)
+    security_settings = TransportSecuritySettings(
+        allowed_hosts=[host, f"{host}:{port}", "localhost", f"localhost:{port}"],
+        allowed_origins=[],
+    )
+    session_manager = StreamableHTTPSessionManager(
+        app=server,
+        event_store=None,
+        json_response=False,
+        stateless=False,
+        security_settings=security_settings,
+        retry_interval=None,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        try:
+            async with session_manager.run():
+                yield
+        finally:
+            cleanup_states()
+
+    app = FastAPI(lifespan=lifespan)
+    app.mount("/mcp", session_manager.handle_request)
+    return app
+
+
+def run_streamable_http(shell_path: str, host: str, port: int) -> None:
+    app = streamable_http_app(shell_path, host, port)
+    uvicorn.run(app, host=host, port=port, log_level="info")
