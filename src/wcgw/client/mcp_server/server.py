@@ -14,8 +14,11 @@ from wcgw.client.tool_prompts import TOOL_PROMPTS
 
 from ...types_ import (
     BashCommand,
+    ContextSave,
     FileWriteOrEdit,
     Initialize,
+    ReadFiles,
+    ReadImage,
 )
 from ..bash_state.bash_state import CONFIG, BashState, get_tmpdir
 from ..tools import (
@@ -104,7 +107,6 @@ async def handle_call_tool(
     tool_type = which_tool_name(name)
     tool_call = parse_tool_by_name(name, arguments)
     state = state_for_tool(tool_call)
-    BASH_STATE = state
 
     try:
         output_or_dones, _ = get_tool_output(
@@ -115,7 +117,6 @@ async def handle_call_tool(
             24000,  # coding_max_tokens
             8000,  # noncoding_max_tokens
         )
-        BASH_STATES[state.current_thread_id] = state
 
     except Exception as e:
         output_or_dones = [f"GOT EXCEPTION while calling tool. Error: {e}"]
@@ -153,39 +154,34 @@ Initialize call done.
 BASH_STATE: BashState | None = None
 BASH_STATES: dict[str, BashState] = {}
 CUSTOM_INSTRUCTIONS = None
+STARTING_DIR = ""
+SHELL_PATH = ""
 
 
 def new_state(thread_id: str | None) -> BashState:
-    template = BASH_STATE
-    working_dir = (
-        template.cwd
-        if template is not None
-        else os.path.join(get_tmpdir(), "claude_playground")
-    )
-    use_screen = template.over_screen if template is not None else True
-    shell_path = template.shell_path if template is not None else os.environ.get(
-        "SHELL", "/bin/bash"
-    )
     return BashState(
         Console(),
-        working_dir,
+        STARTING_DIR,
         None,
         None,
         None,
         None,
-        use_screen,
+        True,
         None,
         thread_id,
-        shell_path,
+        SHELL_PATH or None,
     )
 
 
 def tool_thread_id(tool_call: TOOLS) -> str:
     if isinstance(tool_call, BashCommand):
         return tool_call.action_json.thread_id
-    if isinstance(tool_call, (Initialize, FileWriteOrEdit)):
+    if isinstance(
+        tool_call,
+        (Initialize, FileWriteOrEdit, ReadFiles, ReadImage, ContextSave),
+    ):
         return tool_call.thread_id
-    return ""
+    raise TypeError(f"Unsupported tool type: {type(tool_call)}")
 
 
 def restored_state(thread_id: str) -> BashState | None:
@@ -198,24 +194,29 @@ def restored_state(thread_id: str) -> BashState | None:
 
 def state_for_tool(tool_call: TOOLS) -> BashState:
     if isinstance(tool_call, Initialize) and tool_call.type == "first_call":
-        return new_state(None)
+        new = new_state(None)
+        BASH_STATES[new.current_thread_id] = new
+        return new
 
     thread_id = tool_thread_id(tool_call)
-    if thread_id:
-        state = BASH_STATES.get(thread_id)
-        if state is not None:
-            return state
-        state = restored_state(thread_id)
-        if state is not None:
-            BASH_STATES[thread_id] = state
-            return state
+    if not thread_id:
+        raise ValueError("A thread_id is required for this tool call")
 
-    assert BASH_STATE
-    return BASH_STATE
+    existing = BASH_STATES.get(thread_id)
+    if existing is not None:
+        return existing
+
+    restored = restored_state(thread_id)
+    if restored is None:
+        raise ValueError(
+            f"No saved WCGW state exists for thread_id `{thread_id}`; initialize it first"
+        )
+    BASH_STATES[thread_id] = restored
+    return restored
 
 
 async def main(shell_path: str = "") -> None:
-    global BASH_STATE, CUSTOM_INSTRUCTIONS
+    global BASH_STATE, CUSTOM_INSTRUCTIONS, STARTING_DIR, SHELL_PATH
     CONFIG.update(3, 55, 5)
     version = str(metadata.version("wcgw"))
 
@@ -224,11 +225,12 @@ async def main(shell_path: str = "") -> None:
 
     # starting_dir is inside tmp dir
     tmp_dir = get_tmpdir()
-    starting_dir = os.path.join(tmp_dir, "claude_playground")
+    STARTING_DIR = os.path.join(tmp_dir, "claude_playground")
+    SHELL_PATH = shell_path
 
     BASH_STATE = BashState(
         Console(),
-        starting_dir,
+        STARTING_DIR,
         None,
         None,
         None,
@@ -236,7 +238,7 @@ async def main(shell_path: str = "") -> None:
         True,
         None,
         None,
-        shell_path or None,
+        SHELL_PATH or None,
     )
     BASH_STATE.console.log("wcgw version: " + version)
     try:

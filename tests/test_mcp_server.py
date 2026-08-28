@@ -40,6 +40,7 @@ def setup_bash_state():
     bash_state = BashState(Console(), home_dir, None, None, None, "wcgw", False, None)
     server.BASH_STATES.clear()
     server.BASH_STATE = bash_state
+    server.BASH_STATES[bash_state.current_thread_id] = bash_state
 
     try:
         yield server.BASH_STATE
@@ -189,10 +190,15 @@ async def test_handle_call_tool(setup_bash_state):
     assert len(result) > 0
     assert isinstance(result[0], TextContent)
     assert "Initialize" in result[0].text
+    initialized_thread = re.search(r"Use thread_id=(\w+)", result[0].text)
+    assert initialized_thread is not None
 
     # Test JSON string argument handling
     json_args = {
-        "action_json": {"command": "ls", "thread_id": ""},
+        "action_json": {
+            "command": "ls",
+            "thread_id": initialized_thread.group(1),
+        },
     }
     result = await handle_call_tool("BashCommand", json_args)
     assert isinstance(result, list)
@@ -215,7 +221,10 @@ async def test_handle_call_tool(setup_bash_state):
         result = await handle_call_tool(
             "BashCommand",
             {
-                "action_json": {"command": "ls", "thread_id": ""},
+                "action_json": {
+                    "command": "ls",
+                    "thread_id": initialized_thread.group(1),
+                },
             },
         )
         assert "GOT EXCEPTION" in result[0].text
@@ -287,6 +296,29 @@ async def test_handle_call_tool_preserves_shells_across_thread_ids(
 
 
 @pytest.mark.asyncio
+async def test_handle_call_tool_routes_read_tools_by_thread_id(setup_bash_state):
+    first_state = server.new_state("thread_a")
+    second_state = server.new_state("thread_b")
+    server.BASH_STATES["thread_a"] = first_state
+    server.BASH_STATES["thread_b"] = second_state
+
+    def fake_get_tool_output(*args, **kwargs):
+        context = args[0]
+        return [context.bash_state.current_thread_id], 0.0
+
+    with patch(
+        "wcgw.client.mcp_server.server.get_tool_output",
+        side_effect=fake_get_tool_output,
+    ):
+        result = await handle_call_tool(
+            "ReadFiles",
+            {"file_paths": ["/tmp/example"], "thread_id": "thread_b"},
+        )
+
+    assert result[0].text == "thread_b"
+
+
+@pytest.mark.asyncio
 async def test_handle_call_tool_image_response(setup_bash_state):
     # Test handling of image content
     mock_image_data = "fake_image_data"
@@ -301,7 +333,14 @@ async def test_handle_call_tool_image_response(setup_bash_state):
         "wcgw.client.mcp_server.server.get_tool_output",
         return_value=([mock_image], None),
     ):
-        result = await handle_call_tool("ReadImage", {"file_path": "test.png"})
+        assert server.BASH_STATE is not None
+        result = await handle_call_tool(
+            "ReadImage",
+            {
+                "file_path": "test.png",
+                "thread_id": server.BASH_STATE.current_thread_id,
+            },
+        )
         assert result[0].data == mock_image_data
         assert result[0].mimeType == mock_media_type
 
