@@ -109,6 +109,8 @@ async def handle_call_tool(
     state = state_for_tool(tool_call)
 
     try:
+        if isinstance(tool_call, FileWriteOrEdit):
+            sync_legacy_whitelist_into_state(state)
         output_or_dones, _ = get_tool_output(
             Context(state, state.console),
             tool_call,
@@ -184,6 +186,11 @@ def tool_thread_id(tool_call: TOOLS) -> str:
     raise TypeError(f"Unsupported tool type: {type(tool_call)}")
 
 
+def sync_legacy_whitelist_into_state(state: BashState) -> None:
+    if BASH_STATE is not None and BASH_STATE is not state:
+        state.whitelist_for_overwrite.update(BASH_STATE.whitelist_for_overwrite)
+
+
 def restored_state(thread_id: str) -> BashState | None:
     state = new_state(None)
     if state.load_state_from_thread_id(thread_id):
@@ -200,7 +207,9 @@ def state_for_tool(tool_call: TOOLS) -> BashState:
 
     thread_id = tool_thread_id(tool_call)
     if not thread_id:
-        raise ValueError("A thread_id is required for this tool call")
+        if BASH_STATE is None:
+            raise RuntimeError("WCGW server state is not configured")
+        return BASH_STATE
 
     existing = BASH_STATES.get(thread_id)
     if existing is not None:
@@ -211,6 +220,7 @@ def state_for_tool(tool_call: TOOLS) -> BashState:
         raise ValueError(
             f"No saved WCGW state exists for thread_id `{thread_id}`; initialize it first"
         )
+    sync_legacy_whitelist_into_state(restored)
     BASH_STATES[thread_id] = restored
     return restored
 

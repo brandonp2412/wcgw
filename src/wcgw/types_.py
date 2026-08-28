@@ -245,7 +245,7 @@ class BashCommand(BaseModel):
 
 class ReadImage(BaseModel):
     file_path: str
-    thread_id: str
+    thread_id: str = ""
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
@@ -259,7 +259,7 @@ class WriteIfEmpty(BaseModel):
 
 class ReadFiles(BaseModel):
     file_paths: list[str]
-    thread_id: str
+    thread_id: str = ""
     _start_line_nums: List[Optional[int]] = PrivateAttr(default_factory=lambda: [])
     _end_line_nums: List[Optional[int]] = PrivateAttr(default_factory=lambda: [])
 
@@ -380,7 +380,7 @@ class ContextSave(BaseModel):
     project_root_path: str
     description: str
     relevant_file_globs: list[str]
-    thread_id: str
+    thread_id: str = ""
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)

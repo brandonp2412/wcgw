@@ -164,6 +164,10 @@ async def test_handle_list_tools():
                 "send_ascii",
             }
             assert required_types.issubset(type_refs)
+        elif tool.name in {"ReadFiles", "ReadImage", "ContextSave"}:
+            properties = tool.inputSchema["properties"]
+            assert "thread_id" in properties
+            assert "thread_id" not in tool.inputSchema.get("required", [])
         elif tool.name == "FileWriteOrEdit":
             properties = tool.inputSchema["properties"]
             assert "file_path" in properties
@@ -319,6 +323,43 @@ async def test_handle_call_tool_routes_read_tools_by_thread_id(setup_bash_state)
 
 
 @pytest.mark.asyncio
+async def test_legacy_read_authorizes_later_threaded_write(setup_bash_state, tmp_path):
+    second_state = server.new_state("thread_b")
+    server.BASH_STATES["thread_b"] = second_state
+    test_file = tmp_path / "legacy.txt"
+    test_file.write_text("legacy")
+
+    read_result = await handle_call_tool(
+        "ReadFiles", {"file_paths": [str(test_file)]}
+    )
+    assert "legacy" in read_result[0].text
+    assert server.BASH_STATE is not None
+    assert str(test_file) in server.BASH_STATE.whitelist_for_overwrite
+    assert str(test_file) not in second_state.whitelist_for_overwrite
+
+    def inspect_write_state(*args, **kwargs):
+        context = args[0]
+        authorized = str(test_file) in context.bash_state.whitelist_for_overwrite
+        return [str(authorized)], 0.0
+
+    with patch(
+        "wcgw.client.mcp_server.server.get_tool_output",
+        side_effect=inspect_write_state,
+    ):
+        write_result = await handle_call_tool(
+            "FileWriteOrEdit",
+            {
+                "file_path": str(test_file),
+                "percentage_to_change": 100,
+                "text_or_search_replace_blocks": "replacement",
+                "thread_id": "thread_b",
+            },
+        )
+
+    assert write_result[0].text == "True"
+
+
+@pytest.mark.asyncio
 async def test_handle_call_tool_image_response(setup_bash_state):
     # Test handling of image content
     mock_image_data = "fake_image_data"
@@ -334,13 +375,7 @@ async def test_handle_call_tool_image_response(setup_bash_state):
         return_value=([mock_image], None),
     ):
         assert server.BASH_STATE is not None
-        result = await handle_call_tool(
-            "ReadImage",
-            {
-                "file_path": "test.png",
-                "thread_id": server.BASH_STATE.current_thread_id,
-            },
-        )
+        result = await handle_call_tool("ReadImage", {"file_path": "test.png"})
         assert result[0].data == mock_image_data
         assert result[0].mimeType == mock_media_type
 

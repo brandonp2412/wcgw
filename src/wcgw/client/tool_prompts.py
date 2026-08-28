@@ -58,7 +58,7 @@ TOOL_PROMPTS = [
         name="ReadFiles",
         description="""
 - Read full file content of one or more files.
-- Use the thread_id returned by Initialize for this conversation.
+- Use the thread_id returned by Initialize for this conversation when available; legacy clients may omit it.
 - Provide absolute paths only (~ allowed)
 - Only if the task requires line numbers understanding:
     - You may extract a range of lines. E.g., `/path/to/file:1-10` for lines 1-10. You can drop start or end like `/path/to/file:1-` or `/path/to/file:-10` 
@@ -68,7 +68,7 @@ TOOL_PROMPTS = [
     Tool(
         inputSchema=remove_titles_from_schema(ReadImage.model_json_schema()),
         name="ReadImage",
-        description="Read an image from the shell. Use the thread_id returned by Initialize for this conversation.",
+        description="Read an image from the shell. Use the thread_id returned by Initialize when available; legacy clients may omit it.",
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     ),
     Tool(
@@ -92,7 +92,7 @@ TOOL_PROMPTS = [
         name="ContextSave",
         description="""
  Saves provided description and file contents of all the relevant file paths or globs in a single text file.
-- Use the thread_id returned by Initialize for this conversation.
+- Use the thread_id returned by Initialize when available; legacy clients may omit it.
 - Provide random 3 word unique id or whatever user provided.
 - Leave project path as empty string if no project path""",
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
