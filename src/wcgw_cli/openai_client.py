@@ -46,7 +46,6 @@ class Config(BaseModel):
 
 
 def text_from_editor(console: rich.console.Console) -> str:
-    # First consume all the input till now
     discard_input()
     console.print("\n---------------------------------------\n# User message")
     data = input()
@@ -73,7 +72,6 @@ def save_history(history: History, session_id: str) -> None:
 
 
 def parse_user_message_special(msg: str) -> ChatCompletionUserMessageParam:
-    # Search for lines starting with `%` and treat them as special commands
     parts: list[ChatCompletionContentPartParam] = []
     for line in msg.split("\n"):
         if line.startswith("%"):

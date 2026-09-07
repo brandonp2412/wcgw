@@ -49,7 +49,6 @@ History = list[MessageParam]
 
 
 def text_from_editor(console: rich.console.Console) -> str:
-    # First consume all the input till now
     discard_input()
     console.print("\n---------------------------------------\n# User message")
     data = input()
@@ -76,7 +75,6 @@ def save_history(history: History, session_id: str) -> None:
 
 
 def parse_user_message_special(msg: str) -> MessageParam:
-    # Search for lines starting with `%` and treat them as special commands
     parts: list[ImageBlockParam | TextBlockParam] = []
     for line in msg.split("\n"):
         if line.startswith("%"):
@@ -195,7 +193,7 @@ def loop(
     tools = [
         ToolParam(
             name=tool.name,
-            description=tool.description or "",  # Ensure it's not None
+            description=tool.description or "",
             input_schema=tool.inputSchema,
         )
         for tool in TOOL_PROMPTS
@@ -249,10 +247,10 @@ def loop(
                     f"output tokens: {output_toks}"
                 )
                 break
-            else:
-                system_console.print(
-                    f"\nTotal cost: {config.cost_unit}{cost:.4f}, input tokens: {input_toks}, output tokens: {output_toks}"
-                )
+
+            system_console.print(
+                f"\nTotal cost: {config.cost_unit}{cost:.4f}, input tokens: {input_toks}, output tokens: {output_toks}"
+            )
 
             if not waiting_for_assistant:
                 if first_message:
@@ -288,7 +286,6 @@ def loop(
                         type_ = chunk.type
                         if isinstance(chunk, RawMessageStartEvent):
                             message_start = chunk.message
-                            # Update cost based on token usage from the API response
                             input_tokens = message_start.usage.input_tokens
                             input_toks += input_tokens
                             cost += (
@@ -299,7 +296,6 @@ def loop(
                             ) / 1_000_000
                         elif isinstance(chunk, MessageStopEvent):
                             message_stop = chunk.message
-                            # Update cost based on output tokens
                             output_tokens = message_stop.usage.output_tokens
                             output_toks += output_tokens
                             cost += (
