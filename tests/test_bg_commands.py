@@ -60,7 +60,6 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
         console=console,
     )
 
-    # Initialize once for all tests
     init_args = Initialize(
         type="first_call",
         any_workspace_path=temp_dir,
@@ -74,7 +73,6 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
     )
 
     yield ctx
-    # Cleanup after each test
     try:
         bash_state.sendintr()
         bash_state.cleanup()
@@ -85,7 +83,6 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
 def test_bg_command_basic(context: Context, temp_dir: str) -> None:
     """Test basic background command execution."""
 
-    # Start a background command
     cmd = BashCommand(
         action_json=Command(
             command="sleep 2",
@@ -102,7 +99,6 @@ def test_bg_command_basic(context: Context, temp_dir: str) -> None:
     assert "bg_command_id" in outputs[0]
     assert "status = still running" in outputs[0]
 
-    # Extract bg_command_id from output
     bg_id = None
     for line in outputs[0].split("\n"):
         if "bg_command_id" in line:
@@ -116,7 +112,6 @@ def test_bg_command_basic(context: Context, temp_dir: str) -> None:
 def test_bg_command_status_check(context: Context, temp_dir: str) -> None:
     """Test checking status of background command."""
 
-    # Start a background command
     cmd = BashCommand(
         action_json=Command(
             command="sleep 1",
@@ -129,7 +124,6 @@ def test_bg_command_status_check(context: Context, temp_dir: str) -> None:
         context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
-    # Extract bg_command_id
     bg_id = None
     for line in outputs[0].split("\n"):
         if "bg_command_id" in line:
@@ -138,11 +132,10 @@ def test_bg_command_status_check(context: Context, temp_dir: str) -> None:
 
     assert bg_id is not None
 
-    # Let the process finish before polling. The PTY output must remain available
-    # to the explicit status check rather than being consumed by a reader thread.
+    # The PTY output must remain available to the explicit status check rather
+    # than being consumed by a reader thread before the process finishes.
     time.sleep(1.2)
 
-    # Check status of background command
     status_cmd = BashCommand(
         action_json=StatusCheck(
             status_check=True,
@@ -162,7 +155,6 @@ def test_bg_command_status_check(context: Context, temp_dir: str) -> None:
 def test_bg_command_invalid_id(context: Context, temp_dir: str) -> None:
     """Test error handling for invalid bg_command_id."""
 
-    # Try to check status with invalid bg_command_id
     status_cmd = BashCommand(
         action_json=StatusCheck(
             status_check=True,
@@ -171,19 +163,15 @@ def test_bg_command_invalid_id(context: Context, temp_dir: str) -> None:
         )
     )
 
-    try:
-        outputs, _ = get_tool_output(
+    with pytest.raises(Exception, match="No shell found running with command id"):
+        get_tool_output(
             context, status_cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
         )
-        assert False, "Expected exception for invalid bg_command_id"
-    except Exception as e:
-        assert "No shell found running with command id" in str(e)
 
 
 def test_bg_command_interrupt(context: Context, temp_dir: str) -> None:
     """Test interrupting a background command."""
 
-    # Start a background command
     cmd = BashCommand(
         action_json=Command(
             command="sleep 5",
@@ -196,7 +184,6 @@ def test_bg_command_interrupt(context: Context, temp_dir: str) -> None:
         context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
-    # Extract bg_command_id
     bg_id = None
     for line in outputs[0].split("\n"):
         if "bg_command_id" in line:
@@ -205,7 +192,6 @@ def test_bg_command_interrupt(context: Context, temp_dir: str) -> None:
 
     assert bg_id is not None
 
-    # Send Ctrl-C to background command
     interrupt_cmd = BashCommand(
         action_json=SendSpecials(
             send_specials=["Ctrl-c"],
@@ -224,7 +210,6 @@ def test_bg_command_interrupt(context: Context, temp_dir: str) -> None:
 def test_multiple_bg_commands(context: Context, temp_dir: str) -> None:
     """Test running multiple background commands simultaneously."""
 
-    # Start first background command
     cmd1 = BashCommand(
         action_json=Command(
             command="sleep 2",
@@ -237,7 +222,6 @@ def test_multiple_bg_commands(context: Context, temp_dir: str) -> None:
         context, cmd1, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
-    # Start second background command
     cmd2 = BashCommand(
         action_json=Command(
             command="sleep 2",
@@ -250,18 +234,17 @@ def test_multiple_bg_commands(context: Context, temp_dir: str) -> None:
         context, cmd2, 1.0, lambda x, y: ("", 0.0), 8000, 4000
     )
 
-    # Verify both commands are running
     assert len(context.bash_state.background_shells) == 2
     assert "bg_command_id" in outputs1[0]
     assert "bg_command_id" in outputs2[0]
 
-    # Extract both bg_command_ids
     bg_ids = []
     for output in [outputs1[0], outputs2[0]]:
         for line in output.split("\n"):
-            if "bg_command_id" in line:
-                bg_ids.append(line.split("=")[1].strip())
-                break
+            if "bg_command_id" not in line:
+                continue
+            bg_ids.append(line.split("=")[1].strip())
+            break
 
     assert len(bg_ids) == 2
     assert bg_ids[0] != bg_ids[1]
