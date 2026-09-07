@@ -45,12 +45,10 @@ class CodeWriterMode(BaseModel):
     def model_post_init(self, _: Any) -> None:
         # Patch frequently wrong output trading off accuracy
         # in rare case there's a file named 'all' or a command named 'all'
-        if isinstance(self.allowed_commands, list) and len(self.allowed_commands) == 1:
-            if self.allowed_commands[0] == "all":
-                self.allowed_commands = "all"
-        if isinstance(self.allowed_globs, list) and len(self.allowed_globs) == 1:
-            if self.allowed_globs[0] == "all":
-                self.allowed_globs = "all"
+        if self.allowed_commands == ["all"]:
+            self.allowed_commands = "all"
+        if self.allowed_globs == ["all"]:
+            self.allowed_globs = "all"
 
     def update_relative_globs(self, workspace_root: str) -> None:
         """Update globs if they're relative paths"""
@@ -102,15 +100,10 @@ class Initialize(BaseModel):
             )
             # Patch frequently wrong output trading off accuracy
             # in rare case there's a file named 'all' or a command named 'all'
-            if (
-                isinstance(self.allowed_commands, list)
-                and len(self.allowed_commands) == 1
-            ):
-                if self.allowed_commands[0] == "all":
-                    self.allowed_commands = "all"
-            if isinstance(self.allowed_globs, list) and len(self.allowed_globs) == 1:
-                if self.allowed_globs[0] == "all":
-                    self.allowed_globs = "all"
+            if self.allowed_commands == ["all"]:
+                self.allowed_commands = "all"
+            if self.allowed_globs == ["all"]:
+                self.allowed_globs = "all"
         if self.type != "first_call" and not self.thread_id:
             raise ValueError(
                 "Thread id should be provided if type != 'first_call', including when resetting"
