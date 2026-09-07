@@ -258,8 +258,13 @@ def loop(
                             config.cost_file[config.model], item
                         )
                         cost += cost_
+                        invoked_tools = [
+                            which_tool(tool_args)
+                            for toolcallargs in tool_call_args_by_id.values()
+                            for tool_args in toolcallargs.values()
+                        ]
                         system_console.print(
-                            f"\n---------------------------------------\n# Assistant invoked tools: {[which_tool(tool['function']['arguments']) for tool in item['tool_calls']]}"
+                            f"\n---------------------------------------\n# Assistant invoked tools: {invoked_tools}"
                         )
                         system_console.print(
                             f"\nTotal cost: {config.cost_unit}{cost:.3f}"

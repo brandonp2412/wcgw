@@ -76,9 +76,8 @@ def load_memory(
 
     # Memory files are considered non-code files for token limits
     max_tokens = noncoding_max_tokens
-    if max_tokens:
-        if len(data) // 3 > max_tokens:
-            data = data[: max(0, max_tokens - 20) * 3] + "\n(... truncated)"
+    if max_tokens and len(data) // 3 > max_tokens:
+        data = data[: max(0, max_tokens - 20) * 3] + "\n(... truncated)"
 
     project_root_match = re.search(r"# PROJECT ROOT = \s*(.*?)\s*$", data, re.MULTILINE)
     project_root_path = ""

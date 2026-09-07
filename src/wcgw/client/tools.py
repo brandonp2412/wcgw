@@ -468,10 +468,10 @@ Param = ParamSpec("Param")
 
 
 def truncate_if_over(content: str, max_tokens: Optional[int]) -> str:
-    if max_tokens and max_tokens > 0:
-        if len(content) // 3 > max_tokens:
-            content = content[: max_tokens * 3] + "\n(...truncated)"
-
+    if not max_tokens or max_tokens <= 0:
+        return content
+    if len(content) // 3 > max_tokens:
+        return content[: max_tokens * 3] + "\n(...truncated)"
     return content
 
 
@@ -507,9 +507,12 @@ def get_context_for_errors(
     context = "\n".join(context_lines)
 
     max_tokens = select_max_tokens(filename, coding_max_tokens, noncoding_max_tokens)
-    if max_tokens is not None and max_tokens > 0:
-        if len(context) // 3 > max_tokens:
-            return "Please re-read the file to understand the context"
+    if (
+        max_tokens is not None
+        and max_tokens > 0
+        and len(context) // 3 > max_tokens
+    ):
+        return "Please re-read the file to understand the context"
     return f"Here's relevant snippet from the file where the syntax errors occured:\n<snippet>\n{context}\n</snippet>"
 
 
