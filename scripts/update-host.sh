@@ -11,7 +11,8 @@ fail() {
 [[ -d "$repo/.git" ]] || fail "missing git checkout at $repo"
 
 remote="$(git -C "$repo" remote get-url origin)"
-case "$remote" in
+normalized_remote="${remote/https:\/\/github.com:443\//https:\/\/github.com\/}"
+case "$normalized_remote" in
   git@github.com:brandonp2412/wcgw.git|https://github.com/brandonp2412/wcgw.git)
     ;;
   *)
