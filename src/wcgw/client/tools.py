@@ -164,8 +164,6 @@ def initialize(
     if any_workspace_path:
         if os.path.exists(any_workspace_path):
             if os.path.isfile(any_workspace_path):
-                # Set any_workspace_path to the directory containing the file
-                # Add the file to read_files_ only if empty to avoid duplicates
                 if not read_files_:
                     read_files_ = [any_workspace_path]
                 any_workspace_path = os.path.dirname(any_workspace_path)
@@ -366,7 +364,6 @@ def reset_wcgw(
         else:
             assert isinstance(change_mode, str)
 
-        # Get new state configuration
         bash_command_mode, file_edit_mode, write_if_empty_mode, mode = modes_to_state(
             change_mode
         )
@@ -579,7 +576,6 @@ def write_file(
                 if path_ not in context.bash_state.whitelist_for_overwrite:
                     # File hasn't been read at all
                     msg = f"Error: you need to read existing file {path_} at least once before it can be overwritten.\n\n"
-                    # Read the entire file
                     file_content_str, truncated, _, _, line_range = read_file(
                         path_, coding_max_tokens, noncoding_max_tokens, context, False
                     )
@@ -601,7 +597,6 @@ def write_file(
 
                 if curr_hash != whitelist_data.file_hash:
                     msg = "Error: the file has changed since last read.\n\n"
-                    # Read the entire file again
                     file_content_str, truncated, _, _, line_range = read_file(
                         path_, coding_max_tokens, noncoding_max_tokens, context, False
                     )
@@ -1111,7 +1106,6 @@ def get_tool_output(
     if file_paths_with_ranges:  # Only add to whitelist if we have paths
         context.bash_state.add_to_whitelist_for_overwrite(file_paths_with_ranges)
 
-    # Save bash_state
     context.bash_state.save_state_to_disk()
 
     if isinstance(output[0], str):
@@ -1239,7 +1233,6 @@ def read_file(
     if not path.exists():
         raise ValueError(f"Error: file {file_path} does not exist")
 
-    # Read all lines of the file
     with path.open("r") as f:
         all_lines = f.readlines(10_000_000)
 
@@ -1252,7 +1245,6 @@ def read_file(
     # Apply line range filtering if specified
     start_idx = 0
     if start_line_num is not None:
-        # Convert 1-indexed line number to 0-indexed
         start_idx = max(0, start_line_num - 1)
 
     end_idx = len(all_lines)
@@ -1260,13 +1252,11 @@ def read_file(
         # end_line_num is inclusive, so we use min to ensure it's within bounds
         end_idx = min(len(all_lines), end_line_num)
 
-    # Convert back to 1-indexed line numbers for tracking
     effective_start = start_line_num if start_line_num is not None else 1
     effective_end = end_line_num if end_line_num is not None else total_lines
 
     filtered_lines = all_lines[start_idx:end_idx]
 
-    # Create content with or without line numbers
     if show_line_numbers:
         content_lines = []
         for i, line in enumerate(filtered_lines, start=start_idx + 1):
