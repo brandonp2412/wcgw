@@ -185,7 +185,6 @@ def edit_with_individual_fallback(
             # Will not happen ideally, but still no use of throwing error here
             pass
     elif len(best_matches) > 1:
-        # Find the first block that differs across matches
         first_diff_block = identify_first_differing_block(best_matches)
         if first_diff_block is not None:
             block_content = "\n".join(first_diff_block)

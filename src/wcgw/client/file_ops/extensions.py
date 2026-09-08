@@ -92,14 +92,11 @@ def is_source_code_file(filename: str) -> bool:
     Returns:
         True if the file has a recognized source code extension, False otherwise
     """
-    # Extract extension (without the dot)
     parts = filename.split('.')
     if len(parts) > 1:
         ext = parts[-1].lower()
         return ext in SOURCE_CODE_EXTENSIONS
     
-    # Files without extensions (like 'Makefile', 'Dockerfile')
-    # Case-insensitive match for files without extensions
     return filename.lower() in {ext.lower() for ext in SOURCE_CODE_EXTENSIONS}
 
 def get_context_length_for_file(filename: str) -> int:

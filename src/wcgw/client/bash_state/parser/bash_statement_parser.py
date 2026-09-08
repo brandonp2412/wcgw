@@ -126,16 +126,13 @@ class BashStatementParser:
         if not statements:
             return []
 
-        # Filter out list statements that have been split
         top_statements = []
         for stmt in statements:
-            # Skip statements that are contained within others
             is_contained = False
             for other in statements:
                 if other is stmt:
                     continue
 
-                # Check if completely contained (except for lists we've split)
                 if other.node_type != "list" or ";" not in other.text:
                     if (
                         other.start_line <= stmt.start_line

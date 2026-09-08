@@ -6,7 +6,6 @@ import tokenizers  # type: ignore[import-untyped]
 class FastPathAnalyzer:
     def __init__(self, model_path: str, vocab_path: str) -> None:
         """Initialize with vocabulary."""
-        # Load vocabulary and probabilities
         self.vocab_probs: Dict[str, float] = {}
         with open(vocab_path, "r") as f:
             for line in f:

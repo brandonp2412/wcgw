@@ -43,7 +43,6 @@ class DirectoryTree:
 
         self.expanded_files.add(abs_path)
 
-        # Add all parent directories to expanded dirs
         current = abs_path.parent
         while str(current) >= str(self.root):
             if current not in self.expanded_dirs:
@@ -77,7 +76,6 @@ class DirectoryTree:
         def _display_recursive(
             current_path: Path, indent: int = 0, depth: int = 0
         ) -> None:
-            # Print current directory name with a trailing slash for directories
             if current_path == self.root:
                 writer.write(f"{current_path}/\n")
             else:
@@ -87,7 +85,6 @@ class DirectoryTree:
             if depth > 0 and current_path not in self.expanded_dirs:
                 return
 
-            # Get directory contents
             contents = self._list_directory(current_path)
             shown_items = []
 
