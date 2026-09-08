@@ -22,8 +22,6 @@ def recursive_purge_dict_key(d: Dict[str, Any], k: str) -> None:
         k: The key to remove (typically "title")
     """
     if isinstance(d, dict):
-        # Only remove the key if this looks like a JSON schema object
-        # This includes objects with "type", "$ref", or if we're in a "properties" context
         is_schema_object = (
             "type" in d or 
             "$ref" in d or 
@@ -33,8 +31,6 @@ def recursive_purge_dict_key(d: Dict[str, Any], k: str) -> None:
         if is_schema_object and k in d:
             del d[k]
         
-        # Recursively process all values, regardless of key names
-        # This ensures we catch all nested structures
         for key, value in d.items():
             if isinstance(value, dict):
                 recursive_purge_dict_key(value, k)

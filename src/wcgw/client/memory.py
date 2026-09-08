@@ -73,7 +73,6 @@ def load_memory(
     with open(memory_file, "r") as f:
         data = f.read()
 
-    # Memory files are considered non-code files for token limits
     max_tokens = noncoding_max_tokens
     if max_tokens and len(data) // 3 > max_tokens:
         data = data[: max(0, max_tokens - 20) * 3] + "\n(... truncated)"
@@ -86,7 +85,6 @@ def load_memory(
         if parsed_ and len(parsed_) == 1:
             project_root_path = parsed_[0]
 
-    # Try to load bash state if exists
     state_file = os.path.join(memory_dir, f"{task_id}_bash_state.json")
     bash_state: Optional[dict[str, Any]] = None
     if os.path.exists(state_file):
