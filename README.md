@@ -195,6 +195,8 @@ There are four built-in modes. You may ask Claude to run in one of the modes, li
 | **wcgw** | Default development mode with normal wcgw safeguards | Commands and file edits | Multi-statement Bash and unread full-file overwrites | No prompt, or "Run in wcgw mode" |
 | **YOLO** | Removes wcgw-enforced sandbox, command, workspace, single-statement, and overwrite protections. The process still has the operating-system permissions of the user running wcgw, and the MCP client may enforce its own approvals. | Arbitrary shell commands and file writes available to the wcgw process | Nothing enforced by wcgw | Run in mode='yolo' |
 
+Set `WCGW_YOLO=1` on the wcgw server to make ordinary `mode_name="wcgw"` initialization enter YOLO automatically. Explicit `architect` and `code_writer` requests remain unchanged.
+
 Note: in code-writer mode either all commands are allowed or none are allowed for now. If you give a list of allowed commands, Claude is instructed to run only those commands, but no actual check happens. (WIP)
 
 #### Attach to the working terminal to investigate

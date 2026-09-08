@@ -72,6 +72,32 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
         print(f"Error during cleanup: {e}")
 
 
+def test_initialize_yolo_environment_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WCGW_YOLO", "1")
+
+    wcgw_init = Initialize(
+        type="first_call",
+        any_workspace_path="",
+        initial_files_to_read=[],
+        task_id_to_resume="",
+        mode_name="wcgw",
+        thread_id="",
+    )
+    architect_init = Initialize(
+        type="first_call",
+        any_workspace_path="",
+        initial_files_to_read=[],
+        task_id_to_resume="",
+        mode_name="architect",
+        thread_id="",
+    )
+
+    assert wcgw_init.mode_name == "yolo"
+    assert wcgw_init.mode == "yolo"
+    assert architect_init.mode_name == "architect"
+    assert architect_init.mode == "architect"
+
+
 def test_initialize(context: Context, temp_dir: str) -> None:
     """Test the Initialize tool with various configurations."""
     init_args = Initialize(

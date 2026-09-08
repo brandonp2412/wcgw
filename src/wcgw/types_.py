@@ -91,6 +91,8 @@ class Initialize(BaseModel):
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
+        if self.mode_name == "wcgw" and os.environ.get("WCGW_YOLO") == "1":
+            self.mode_name = "yolo"
         if self.mode_name == "code_writer":
             assert self.allowed_globs is not None, (
                 "allowed_globs can't be null when the mode is code_writer"

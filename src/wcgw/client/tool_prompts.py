@@ -25,7 +25,7 @@ TOOL_PROMPTS = [
 - Use `any_workspace_path` to initialize the shell in the appropriate project directory.
 - If the user has mentioned a workspace or project root or any other file or folder use it to set `any_workspace_path`.
 - If user has mentioned any files use `initial_files_to_read` to read, use absolute paths only (~ allowed)
-- By default use mode "wcgw".
+- By default use mode "wcgw". If the server is launched with `WCGW_YOLO=1`, ordinary `wcgw` initialization is automatically promoted to `yolo`.
 - Use mode "yolo" when the user explicitly requests unrestricted wcgw execution with no wcgw-enforced sandbox, command, workspace, or overwrite protections.
 - In "code-writer" mode, set the commands and globs which user asked to set, otherwise use 'all'.
 - Use type="first_call" if it's the first call to this tool.
