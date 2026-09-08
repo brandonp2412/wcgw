@@ -88,13 +88,11 @@ def test_whitelist_data_tracking(test_file):
     whitelist_data.add_range(7, 9)
     percentage = whitelist_data.get_percentage_read()
 
-    # We've read lines 1-5, 7-9, and 10-15, so 14 out of 20 lines = 70%
     assert percentage == 70.0
 
     assert not whitelist_data.is_read_enough()
 
     unread_ranges = whitelist_data.get_unread_ranges()
-    # We've read lines 1-5, 7-9, and 10-15, so we're missing 6 and 16-20
     assert len(unread_ranges) == 2
     assert (6, 6) in unread_ranges
     assert (16, 20) in unread_ranges

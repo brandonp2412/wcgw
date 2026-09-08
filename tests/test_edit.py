@@ -311,13 +311,10 @@ def fix_indentation(
 
     def adjust_indentation(line: str, diff: int) -> str:
         if diff < 0:
-            # Need to add -diff spaces
             return matched_indents[0][:-diff] + line
-        # Need to remove diff spaces
         return line[diff:]
 
     if diffs[0] > 0:
-        # Check if replaced_lines have enough leading spaces to remove
         if not all(not line[: diffs[0]].strip() for line in replaced_lines):
             return replaced_lines
 
@@ -331,7 +328,6 @@ def test_empty_inputs():
 
 
 def test_no_non_empty_lines_in_matched_or_searched():
-    # All lines in matched_lines/searched_lines are blank or just spaces
     matched_lines = ["   ", "  "]
     searched_lines = ["   ", "\t "]
     replaced_lines = ["   Some text", "   Another text"]
@@ -343,11 +339,9 @@ def test_no_non_empty_lines_in_matched_or_searched():
 
 
 def test_same_indentation_no_change():
-    # The non-empty lines have the same indentation => diff=0 => no changes
     matched_lines = ["    foo", "    bar"]
     searched_lines = ["    baz", "    qux"]
     replaced_lines = ["        spam", "        ham"]
-    # Should return replaced_lines unchanged
     assert (
         fix_indentation(matched_lines, searched_lines, replaced_lines) == replaced_lines
     )

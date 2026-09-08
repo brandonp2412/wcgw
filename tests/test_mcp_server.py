@@ -147,7 +147,6 @@ async def test_handle_list_tools():
             assert properties["initial_files_to_read"]["type"] == "array"
         elif tool.name == "BashCommand":
             properties = tool.inputSchema["properties"]
-            # BashCommand schema is flattened, so it has the action fields directly
             assert "type" in properties
             assert "command" in properties
             assert "wait_for_seconds" in properties
