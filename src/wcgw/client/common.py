@@ -29,18 +29,14 @@ def discard_input() -> None:
         old_settings = termios.tcgetattr(fd)
 
         try:
-            # Switch terminal to non-canonical mode where input is read immediately
             tty.setcbreak(fd)
 
             while True:
                 if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                    sys.stdin.read(
-                        1
-                    )  # Read one character at a time to flush the input buffer
+                    sys.stdin.read(1)
                 else:
                     break
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     except (termios.error, ValueError) as e:
-        # Handle the error gracefully
         print(f"Warning: Unable to discard input. Error: {e}")
