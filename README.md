@@ -187,12 +187,13 @@ Then ask claude to execute shell commands, read files, edit files, run your code
 
 #### Modes
 
-There are three built-in modes. You may ask Claude to run in one of the modes, like "Use 'architect' mode"
+There are four built-in modes. You may ask Claude to run in one of the modes, like "Use 'architect' mode".
 | **Mode** | **Description** | **Allows** | **Denies** | **Invoke prompt** |
 |-----------------|-----------------------------------------------------------------------------|---------------------------------------------------------|----------------------------------------------|----------------------------------------------------------------------------------------------------|
 | **Architect** | Designed for you to work with Claude to investigate and understand your repo. | Read-only commands | FileEdit and Write tool | Run in mode='architect' |
 | **Code-writer** | For code writing and development | Specified path globs for editing or writing, specified commands | FileEdit for paths not matching specified glob, Write for paths not matching specified glob | Run in code writer mode, only 'tests/**' allowed, only uv command allowed |
-| **wcgw\*\* | Default mode with everything allowed | Everything | Nothing | No prompt, or "Run in wcgw mode" |
+| **wcgw** | Default development mode with normal wcgw safeguards | Commands and file edits | Multi-statement Bash and unread full-file overwrites | No prompt, or "Run in wcgw mode" |
+| **YOLO** | Removes wcgw-enforced sandbox, command, workspace, single-statement, and overwrite protections. The process still has the operating-system permissions of the user running wcgw, and the MCP client may enforce its own approvals. | Arbitrary shell commands and file writes available to the wcgw process | Nothing enforced by wcgw | Run in mode='yolo' |
 
 Note: in code-writer mode either all commands are allowed or none are allowed for now. If you give a list of allowed commands, Claude is instructed to run only those commands, but no actual check happens. (WIP)
 

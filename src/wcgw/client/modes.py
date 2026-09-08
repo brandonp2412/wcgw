@@ -112,6 +112,12 @@ You are now running in "code_writer" mode.
     return base
 
 
+YOLO_PROMPT = """
+# YOLO mode
+
+You are running in "yolo" mode. wcgw does not impose command, file-path, workspace, or overwrite safety restrictions in this mode. Bash commands may contain multiple statements and FileWriteOrEdit may replace existing files without a prior read. The shell runs with the permissions of the wcgw process; operating-system and MCP-client permissions remain external to wcgw.
+"""
+
 WCGW_PROMPT = """
 # Instructions
 
@@ -164,6 +170,11 @@ DEFAULT_MODES: dict[Modes, ModeImpl] = {
         file_edit_mode=FileEditMode([]),
     ),
     "code_writer": ModeImpl(
+        bash_command_mode=BashCommandMode("normal_mode", "all"),
+        write_if_empty_mode=WriteIfEmptyMode("all"),
+        file_edit_mode=FileEditMode("all"),
+    ),
+    "yolo": ModeImpl(
         bash_command_mode=BashCommandMode("normal_mode", "all"),
         write_if_empty_mode=WriteIfEmptyMode("all"),
         file_edit_mode=FileEditMode("all"),
@@ -237,4 +248,9 @@ Provide all relevant file paths in order to understand and solve the the task. E
 (Note to self: this conversation can then be resumed later asking "Resume wcgw task `<generated id>`" which should call Initialize tool)
 """
 
-KTS = {"wcgw": WCGW_KT, "architect": ARCHITECT_KT, "code_writer": WCGW_KT}
+KTS = {
+    "wcgw": WCGW_KT,
+    "architect": ARCHITECT_KT,
+    "code_writer": WCGW_KT,
+    "yolo": WCGW_KT,
+}

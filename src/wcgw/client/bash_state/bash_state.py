@@ -1282,7 +1282,8 @@ def _execute_bash(
 
             command = command_data.command.strip()
 
-            assert_single_statement(command)
+            if bash_state.mode != "yolo":
+                assert_single_statement(command)
 
             if command_data.is_background:
                 bash_state = bash_state.start_new_bg_shell(bash_state.cwd)

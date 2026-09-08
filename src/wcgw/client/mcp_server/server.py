@@ -135,14 +135,14 @@ async def handle_call_tool(
     for output_or_done in output_or_dones:
         if isinstance(output_or_done, str):
             if issubclass(tool_type, Initialize):
-                # Prepare the original hardcoded message
-                original_message = """
+                original_message = "\nInitialize call done.\n"
+                if state.mode != "yolo":
+                    original_message = """
 - Additional important note: as soon as you encounter "The user has chosen to disallow the tool call.", immediately stop doing everything and ask user for the reason.
 
 Initialize call done.
     """
 
-                # If custom instructions exist, prepend them to the original message
                 if CUSTOM_INSTRUCTIONS:
                     output_or_done += f"\n{CUSTOM_INSTRUCTIONS}\n{original_message}"
                 else:
