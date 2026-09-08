@@ -94,7 +94,6 @@ def check_if_screen_command_available() -> bool:
             timeout=CONFIG.timeout,
         )
 
-        # Check if screenrc exists, create it if it doesn't
         home_dir = os.path.expanduser("~")
         screenrc_path = os.path.join(home_dir, ".screenrc")
 
@@ -120,7 +119,6 @@ def get_wcgw_screen_sessions() -> list[str]:
     screen_sessions = []
 
     try:
-        # Get list of all screen sessions
         result = subprocess.run(
             ["screen", "-ls"],
             capture_output=True,
@@ -143,7 +141,6 @@ def get_wcgw_screen_sessions() -> list[str]:
 
             session_id = session_parts[0].strip()
 
-            # Check if it's a WCGW session
             if ".wcgw." in session_id:
                 screen_sessions.append(session_id)
     except Exception:
@@ -164,7 +161,6 @@ def get_orphaned_wcgw_screens() -> list[str]:
     orphaned_screens = []
 
     try:
-        # Get list of all WCGW screen sessions
         screen_sessions = get_wcgw_screen_sessions()
 
         for session_id in screen_sessions:
@@ -913,7 +909,6 @@ class BashState:
                 for k in whitelist_state
             }
 
-        # Get the thread_id from state, or generate a new one if not present
         thread_id = state.get("chat_id")
         if thread_id is None:
             thread_id = generate_thread_id()
@@ -950,7 +945,6 @@ class BashState:
         self._current_thread_id = thread_id
         self.reset_shell()
 
-        # Save state to disk after loading
         self.save_state_to_disk()
 
     def get_pending_for(self) -> str:
@@ -985,22 +979,18 @@ class BashState:
                                the ranges that have been read.
         """
         for file_path, ranges in file_paths_with_ranges.items():
-            # Read the file to get its hash and count lines
             with open(file_path, "rb") as f:
                 file_content = f.read()
                 file_hash = sha256(file_content).hexdigest()
                 total_lines = file_content.count(b"\n") + 1
 
-            # Update or create whitelist entry
             if file_path in self._whitelist_for_overwrite:
-                # Update existing entry
                 whitelist_data = self._whitelist_for_overwrite[file_path]
                 whitelist_data.file_hash = file_hash
                 whitelist_data.total_lines = total_lines
                 for range_start, range_end in ranges:
                     whitelist_data.add_range(range_start, range_end)
             else:
-                # Create new entry
                 self._whitelist_for_overwrite[file_path] = FileWhitelistData(
                     file_hash=file_hash,
                     line_ranges_read=list(ranges),

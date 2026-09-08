@@ -93,21 +93,16 @@ def get_stats_path(workspace_path: str) -> str:
     Returns:
         The path to the stats file.
     """
-    # Normalize the path
     workspace_path = os.path.normpath(os.path.expanduser(workspace_path))
 
-    # Get the basename of the workspace path for readability
     workspace_name = os.path.basename(workspace_path)
     if not workspace_name:  # In case of root directory
         workspace_name = "root"
 
-    # Create a hash of the full path
     path_hash = hashlib.md5(workspace_path.encode()).hexdigest()
 
-    # Combine to create a unique identifier that's still somewhat readable
     filename = f"{workspace_name}_{path_hash}.json"
 
-    # Create directory if it doesn't exist
     xdg_data_dir = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
     stats_dir = os.path.join(xdg_data_dir, "wcgw/workspace_stats")
     os.makedirs(stats_dir, exist_ok=True)

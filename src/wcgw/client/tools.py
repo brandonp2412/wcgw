@@ -166,12 +166,10 @@ def initialize(
                 if not read_files_:
                     read_files_ = [any_workspace_path]
                 any_workspace_path = os.path.dirname(any_workspace_path)
-            # Let get_repo_context handle loading the workspace stats
             repo_context, folder_to_start = get_repo_context(any_workspace_path)
 
             repo_context = f"---\n# Workspace structure\n{repo_context}\n---\n"
 
-            # update modes if they're relative
             if isinstance(mode, CodeWriterMode):
                 mode.update_relative_globs(any_workspace_path)
             else:
@@ -185,7 +183,6 @@ def initialize(
                 repo_context = (
                     f"\nInfo: Workspace path {any_workspace_path} does not exist."
                 )
-    # Restore bash state if available
     if loaded_state is not None:
         try:
             parsed_state = BashState.parse_state(loaded_state)
@@ -230,9 +227,7 @@ def initialize(
         state = modes_to_state(mode)
         new_thread_id = context.bash_state.current_thread_id
         if type == "first_call":
-            # Recreate thread_id
             new_thread_id = generate_thread_id()
-        # Use the provided workspace path as the workspace root
         context.bash_state.load_state(
             state[0],
             state[1],
