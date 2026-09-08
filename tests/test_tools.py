@@ -563,6 +563,62 @@ def test_context_save(context: Context, temp_dir: str) -> None:
     assert outputs[0].endswith(".txt")
 
 
+def test_yolo_mode_removes_wcgw_execution_guards(
+    context: Context, temp_dir: str
+) -> None:
+    init_args = Initialize(
+        type="first_call",
+        any_workspace_path=temp_dir,
+        initial_files_to_read=[],
+        task_id_to_resume="",
+        mode_name="yolo",
+        thread_id="",
+    )
+    outputs, _ = get_tool_output(
+        context, init_args, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+    )
+
+    assert len(outputs) == 1
+    assert 'running in "yolo" mode' in str(outputs[0]).lower()
+    assert context.bash_state.mode == "yolo"
+
+    overwrite_path = os.path.join(temp_dir, "overwrite.txt")
+    with open(overwrite_path, "w") as f:
+        f.write("old")
+
+    write_args = FileWriteOrEdit(
+        file_path="overwrite.txt",
+        text_or_search_replace_blocks="new",
+        percentage_to_change=100,
+        thread_id=context.bash_state.current_thread_id,
+    )
+    outputs, _ = get_tool_output(
+        context, write_args, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+    )
+
+    assert "Success" in str(outputs[0])
+    with open(overwrite_path) as f:
+        assert f.read() == "new"
+
+    first_path = os.path.join(temp_dir, "first.txt")
+    second_path = os.path.join(temp_dir, "second.txt")
+    cmd = BashCommand(
+        action_json=Command(
+            command=(
+                f"printf first > {first_path}\n"
+                f"printf second > {second_path}"
+            ),
+            thread_id=context.bash_state.current_thread_id,
+        )
+    )
+    get_tool_output(context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000)
+
+    with open(first_path) as f:
+        assert f.read() == "first"
+    with open(second_path) as f:
+        assert f.read() == "second"
+
+
 def test_reinitialize(context: Context, temp_dir: str) -> None:
     """Test the tool with various mode changes."""
     init_args = Initialize(

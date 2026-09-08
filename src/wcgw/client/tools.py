@@ -66,6 +66,7 @@ from .memory import load_memory, save_memory
 from .modes import (
     ARCHITECT_PROMPT,
     WCGW_PROMPT,
+    YOLO_PROMPT,
     code_writer_prompt,
     modes_to_state,
 )
@@ -95,6 +96,8 @@ def get_mode_prompt(context: Context) -> str:
         )
     elif context.bash_state.mode == "architect":
         mode_prompt = ARCHITECT_PROMPT
+    elif context.bash_state.mode == "yolo":
+        mode_prompt = YOLO_PROMPT
     else:
         mode_prompt = WCGW_PROMPT
 
@@ -855,10 +858,13 @@ def file_writing(
 
     path_ = expand_user(file_writing_args.file_path)
     if not os.path.isabs(path_):
-        return (
-            f"Failure: file_path should be absolute path, current working directory is {context.bash_state.cwd}",
-            {},  # Return empty dict instead of empty list for type consistency
-        )
+        if context.bash_state.mode == "yolo":
+            path_ = os.path.abspath(os.path.join(context.bash_state.cwd, path_))
+        else:
+            return (
+                f"Failure: file_path should be absolute path, current working directory is {context.bash_state.cwd}",
+                {},  # Return empty dict instead of empty list for type consistency
+            )
 
     content = file_writing_args.text_or_search_replace_blocks
 
@@ -868,7 +874,7 @@ def file_writing(
                 file_path=path_,
                 file_content=file_writing_args.text_or_search_replace_blocks,
             ),
-            True,
+            context.bash_state.mode != "yolo",
             coding_max_tokens,
             noncoding_max_tokens,
             context,

@@ -139,6 +139,7 @@ async def test_handle_list_tools():
                 "wcgw",
                 "architect",
                 "code_writer",
+                "yolo",
             ]
             assert "any_workspace_path" in properties
             assert properties["any_workspace_path"]["type"] == "string"
