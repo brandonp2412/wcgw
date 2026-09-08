@@ -62,9 +62,10 @@ class CodeWriterMode(BaseModel):
 ModesConfig = Union[Literal["wcgw", "architect", "yolo"], CodeWriterMode]
 
 TASK_LABEL_DESCRIPTION = (
-    "Concise stable label for the user's current task. Reuse the exact same value "
-    "for every wcgw tool call made for that user request; change it when the user "
-    "moves to a different task."
+    "New clients should always provide a concise stable label for the user's current "
+    "task. Reuse the exact same value for every wcgw tool call made for that user "
+    "request; change it when the user moves to a different task. Legacy clients may "
+    "omit this field."
 )
 
 

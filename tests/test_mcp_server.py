@@ -146,7 +146,10 @@ async def test_handle_list_tools():
         assert isinstance(tool.description, str)
         assert len(tool.description.strip()) > 0
         assert "task_label" in tool.inputSchema["properties"]
-        assert "task_label" in tool.inputSchema.get("required", [])
+        assert "task_label" not in tool.inputSchema.get("required", [])
+        assert "always provide" in tool.inputSchema["properties"]["task_label"][
+            "description"
+        ]
 
         if tool.name == "Initialize":
             properties = tool.inputSchema["properties"]
