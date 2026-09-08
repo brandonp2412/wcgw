@@ -16,9 +16,9 @@ from .schema_generator import remove_titles_from_schema
 
 def task_aware_schema(model: Any) -> dict[str, Any]:
     schema = remove_titles_from_schema(model.model_json_schema())
-    required = schema.setdefault("required", [])
-    if "task_label" not in required:
-        required.append("task_label")
+    required = schema.get("required")
+    if isinstance(required, list):
+        schema["required"] = [name for name in required if name != "task_label"]
     return schema
 
 
