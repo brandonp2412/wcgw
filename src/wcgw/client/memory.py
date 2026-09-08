@@ -50,7 +50,6 @@ def save_memory(
     with open(memory_file_full, "w") as f:
         f.write(memory_data)
 
-    # Save bash state if provided
     if bash_state_dict is not None:
         state_file = os.path.join(memory_dir, f"{task_id}_bash_state.json")
         with open(state_file, "w") as f:

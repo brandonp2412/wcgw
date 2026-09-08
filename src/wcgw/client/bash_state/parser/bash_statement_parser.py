@@ -32,7 +32,6 @@ class Statement:
 
 class BashStatementParser:
     def __init__(self) -> None:
-        # Use the precompiled bash language
         self.language = Language(tree_sitter_bash.language())
         self.parser = Parser(self.language)
 
@@ -47,13 +46,9 @@ class BashStatementParser:
         tree = self.parser.parse(bytes(content, "utf-8"))
         root_node = tree.root_node
 
-        # For debugging: Uncomment to print the tree structure
-        # self._print_tree(root_node, content)
-
         statements: List[Statement] = []
         self._extract_statements(root_node, content, statements, None)
 
-        # Post-process statements to handle multi-line statements correctly
         return self._post_process_statements(statements, content)
 
     def _print_tree(self, node: Any, content: str, indent: str = "") -> None:
@@ -98,14 +93,11 @@ class BashStatementParser:
             "redirected_statement",
         }
 
-        # Create a Statement object for this node if it's a recognized statement type
         if node.type in statement_node_types:
-            # Get the text of this statement
             start_byte = node.start_byte
             end_byte = node.end_byte
             statement_text = content[start_byte:end_byte]
 
-            # Get line numbers
             start_line = (
                 node.start_point[0] + 1
             )  # tree-sitter uses 0-indexed line numbers
@@ -123,10 +115,8 @@ class BashStatementParser:
                 )
             )
 
-            # Update parent type for children
             parent_type = node.type
 
-        # Recursively process all children
         for child in node.children:
             self._extract_statements(child, content, statements, parent_type)
 
