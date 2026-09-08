@@ -254,7 +254,6 @@ def cleanup_all_screens_with_name(name: str, console: Console) -> None:
         session_info = line.split()[0].strip()  # e.g., "1234.my_screen"
         if session_info.endswith(f".{name}"):
             sessions_to_kill.append(session_info)
-    # Now, for every session we found, tell screen to quit it.
     for session in sessions_to_kill:
         try:
             subprocess.run(
@@ -281,10 +280,9 @@ def get_rc_file_path(shell_path: str) -> Optional[str]:
 
     if shell_name == "zsh":
         return os.path.join(home_dir, ".zshrc")
-    elif shell_name == "bash":
+    if shell_name == "bash":
         return os.path.join(home_dir, ".bashrc")
-    else:
-        return None
+    return None
 
 
 def ensure_wcgw_block_in_rc_file(shell_path: str, console: Console) -> None:
@@ -326,9 +324,7 @@ fi
     else:
         return
 
-    # Check if rc file exists
     if not os.path.exists(rc_file_path):
-        # Create the rc file with the WCGW block
         try:
             with open(rc_file_path, "w") as f:
                 f.write(wcgw_block)
@@ -337,7 +333,6 @@ fi
             console.log(f"Failed to create {rc_file_path}: {e}")
         return
 
-    # Check if the block already exists
     try:
         with open(rc_file_path) as f:
             content = f.read()
@@ -761,7 +756,6 @@ class BashState:
 
     def clear_to_run(self) -> None:
         """Check if prompt is clear to enter new command otherwise send ctrl c"""
-        # First clear
         starttime = time.time()
         self.close_bg_expect_thread()
         try:
@@ -782,7 +776,6 @@ class BashState:
                     return
             output = self.expect([" ", pexpect.TIMEOUT], 0.1)
             if output != 1:
-                # Then we got something new send ctrl-c
                 self.send("\x03", None)
 
                 output = self.expect([PROMPT_CONST, pexpect.TIMEOUT], CONFIG.timeout)

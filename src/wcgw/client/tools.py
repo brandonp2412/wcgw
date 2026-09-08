@@ -843,7 +843,6 @@ def file_writing(
     If percentage_changed > 50%, treat content as direct file content.
     Otherwise, treat content as search/replace blocks.
     """
-    # Check if the thread_id matches current
     if file_writing_args.thread_id != context.bash_state.current_thread_id:
         # Try to load state from the thread_id
         if not context.bash_state.load_state_from_thread_id(
@@ -854,7 +853,6 @@ def file_writing(
                 {},
             )
 
-    # Expand the path before checking if it's absolute
     path_ = expand_user(file_writing_args.file_path)
     if not os.path.isabs(path_):
         return (
@@ -862,11 +860,9 @@ def file_writing(
             {},  # Return empty dict instead of empty list for type consistency
         )
 
-    # If file doesn't exist, always use direct file_content mode
     content = file_writing_args.text_or_search_replace_blocks
 
     if not _is_edit(content, file_writing_args.percentage_to_change):
-        # Use direct content mode (same as WriteIfEmpty)
         result, paths = write_file(
             WriteIfEmpty(
                 file_path=path_,
@@ -878,18 +874,17 @@ def file_writing(
             context,
         )
         return result, paths
-    else:
-        # File exists and percentage <= 50, use search/replace mode
-        result, paths = do_diff_edit(
+
+    result, paths = do_diff_edit(
             FileEdit(
                 file_path=path_,
                 file_edit_using_search_replace_blocks=file_writing_args.text_or_search_replace_blocks,
             ),
             coding_max_tokens,
             noncoding_max_tokens,
-            context,
-        )
-        return result, paths
+        context,
+    )
+    return result, paths
 
 
 TOOLS = BashCommand | FileWriteOrEdit | ReadImage | ReadFiles | Initialize | ContextSave
