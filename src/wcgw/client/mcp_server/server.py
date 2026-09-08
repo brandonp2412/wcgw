@@ -38,7 +38,6 @@ from ..tools import (
 
 server: Server[Any] = Server("wcgw")
 
-# Log only time stamp
 logging.basicConfig(level=logging.INFO, format="%(asctime)s: %(message)s")
 logger = logging.getLogger("wcgw")
 

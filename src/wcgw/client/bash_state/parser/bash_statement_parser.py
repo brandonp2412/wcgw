@@ -68,24 +68,18 @@ class BashStatementParser:
         parent_type: Optional[str],
     ) -> None:
         """Recursively extract statements from the syntax tree."""
-        # Node types that represent bash statements
         statement_node_types = {
-            # Basic statements
             "command",
             "variable_assignment",
             "declaration_command",
             "unset_command",
-            # Comments
             "comment",
-            # Control flow statements
             "for_statement",
             "c_style_for_statement",
             "while_statement",
             "if_statement",
             "case_statement",
-            # Function definition
             "function_definition",
-            # Command chains and groups
             "pipeline",  # For command chains with | and |&
             "list",  # For command chains with && and ||
             "compound_statement",
@@ -146,7 +140,6 @@ class BashStatementParser:
             if not is_contained:
                 top_statements.append(stmt)
 
-        # Sort by position in file for consistent output
         top_statements.sort(key=lambda s: (s.start_line, s.start_byte))
 
         return top_statements
