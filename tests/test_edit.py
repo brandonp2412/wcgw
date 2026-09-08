@@ -460,7 +460,6 @@ def test_realistic_nonfix_indentation_scenario():
 
 def test_context_based_matching(context: Context, temp_dir: str) -> None:
     """Test using past and future context to uniquely identify search blocks."""
-    # First initialize
     init_args = Initialize(
         thread_id="",
         any_workspace_path=temp_dir,
@@ -473,12 +472,10 @@ def test_context_based_matching(context: Context, temp_dir: str) -> None:
         context, init_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
-    # Create a test file with repeating pattern
     test_file = os.path.join(temp_dir, "test_context.py")
     with open(test_file, "w") as f:
         f.write("A\nB\nC\nB\n")
 
-    # Test case 1: Using future context to uniquely identify a block
     # The search "A" followed by "B" followed by "C" uniquely determines the first B
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
@@ -504,13 +501,10 @@ C
         context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
-    # Verify the change - first B should be modified
     with open(test_file) as f:
         content = f.read()
     assert content == "A\nB_MODIFIED_FIRST\nC\nB\n"
 
-    # Test case 2: Using past context to uniquely identify a block
-    # Reset the file
     with open(test_file, "w") as f:
         f.write("A\nB\nC\nB\n")
 
@@ -534,14 +528,12 @@ B_MODIFIED_SECOND
         context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
-    # Verify the change - second B should be modified
     with open(test_file) as f:
         content = f.read()
     assert content == "A\nB\nC\nB_MODIFIED_SECOND\n"
 
 
 def test_unordered(context: Context, temp_dir: str) -> None:
-    # First initialize
     init_args = Initialize(
         thread_id="",
         any_workspace_path=temp_dir,
@@ -554,13 +546,10 @@ def test_unordered(context: Context, temp_dir: str) -> None:
         context, init_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
-    # Create a test file with repeating pattern
     test_file = os.path.join(temp_dir, "test_context.py")
     with open(test_file, "w") as f:
         f.write("A\nB\nC\nB\n")
 
-    # Test case 1: Using future context to uniquely identify a block
-    # The search "A" followed by "B" followed by "C" uniquely determines the first B
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
         file_path=test_file,
@@ -581,7 +570,6 @@ A_MODIFIED
         context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
-    # Verify the change - first B should be modified
     with open(test_file) as f:
         content = f.read()
     assert content == "A_MODIFIED\nB\nCPrime\nB\n"
