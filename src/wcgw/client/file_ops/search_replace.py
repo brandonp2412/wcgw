@@ -128,26 +128,20 @@ def identify_first_differing_block(
     # First, check if the number of blocks differs (shouldn't happen, but let's be safe)
     block_counts = [len(match.edited_with_tolerances) for match in best_matches]
     if not all(count == block_counts[0] for count in block_counts):
-        # If block counts differ, just return the first search block as problematic
         return (
             best_matches[0].orig_search_blocks[0]
             if best_matches[0].orig_search_blocks
             else None
         )
 
-    # Go through each block position and see if the slices differ
     for i in range(min(block_counts)):
         slices = [match.edited_with_tolerances[i][0] for match in best_matches]
 
-        # Check if we have different slices for this block across matches
         if any(s.start != slices[0].start or s.stop != slices[0].stop for s in slices):
-            # We found our differing block - return the search block content
             if i < len(best_matches[0].orig_search_blocks):
                 return best_matches[0].orig_search_blocks[i]
-            else:
-                return None
+            return None
 
-    # If we get here, we couldn't identify a specific differing block
     return None
 
 
