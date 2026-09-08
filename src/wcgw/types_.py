@@ -272,11 +272,9 @@ class ReadFiles(BaseModel):
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
-        # Parse file paths for line ranges and store them in private attributes
         self._start_line_nums = []
         self._end_line_nums = []
 
-        # Create new file_paths list without line ranges
         clean_file_paths = []
 
         for file_path in self.file_paths:
@@ -284,21 +282,18 @@ class ReadFiles(BaseModel):
             end_line_num = None
             path_part = file_path
 
-            # Check if the path ends with a line range pattern
-            # We're looking for patterns at the very end of the path like:
+            # Supported suffixes:
             #  - file.py:10      (specific line)
             #  - file.py:10-20   (line range)
             #  - file.py:10-     (from line 10 to end)
             #  - file.py:-20     (from start to line 20)
 
-            # Split by the last colon
             if ":" in file_path:
                 parts = file_path.rsplit(":", 1)
                 if len(parts) == 2:
                     potential_path = parts[0]
                     line_spec = parts[1]
 
-                    # Check if it's a valid line range format
                     if line_spec.isdigit():
                         # Format: file.py:10
                         try:
@@ -336,12 +331,10 @@ class ReadFiles(BaseModel):
                                 # Keep original path
                                 pass
 
-            # Add clean path and corresponding line numbers
             clean_file_paths.append(path_part)
             self._start_line_nums.append(start_line_num)
             self._end_line_nums.append(end_line_num)
 
-        # Update file_paths with clean paths
         self.file_paths = clean_file_paths
 
         return super().model_post_init(__context)
