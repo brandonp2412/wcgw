@@ -237,7 +237,6 @@ def hello():
             context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
         )
 
-    # Grounding should pass even when duplicate found
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
         file_path=test_file,
@@ -331,8 +330,6 @@ def test_no_non_empty_lines_in_matched_or_searched():
     matched_lines = ["   ", "  "]
     searched_lines = ["   ", "\t "]
     replaced_lines = ["   Some text", "   Another text"]
-    # Because matched_lines / searched_lines effectively have 0 non-empty lines,
-    # the function returns replaced_lines as is
     assert (
         fix_indentation(matched_lines, searched_lines, replaced_lines) == replaced_lines
     )
@@ -348,39 +345,31 @@ def test_same_indentation_no_change():
 
 
 def test_positive_indentation_difference():
-    # matched_lines have fewer spaces than searched_lines => diff > 0 => remove indentation from replaced_lines
     matched_lines = ["  foo", "  bar"]
     searched_lines = ["    foo", "    bar"]
     replaced_lines = ["    spam", "    ham"]
-    # diff is 2 => remove 2 spaces from the start of each replaced line
     expected = ["  spam", "  ham"]
     assert fix_indentation(matched_lines, searched_lines, replaced_lines) == expected
 
 
 def test_positive_indentation_not_enough_spaces():
-    # We want to remove 2 spaces, but replaced_lines do not have that many leading spaces
     matched_lines = ["foo", "bar"]
     searched_lines = ["    foo", "    bar"]
     replaced_lines = [" spam", " ham"]  # only 1 leading space
-    # The function should detect there's not enough indentation to remove => return replaced_lines unchanged
     assert (
         fix_indentation(matched_lines, searched_lines, replaced_lines) == replaced_lines
     )
 
 
 def test_negative_indentation_difference():
-    # matched_lines have more spaces than searched_lines => diff < 0 => add indentation to replaced_lines
     matched_lines = ["    foo", "    bar"]
     searched_lines = ["  foo", "  bar"]
     replaced_lines = ["spam", "ham"]
-    # diff is -2 => add 2 spaces from matched_indents[0] to each line
-    # matched_indents[0] = '    ' => matched_indents[0][:-diff] => '    '[:2] => '  '
     expected = ["  spam", "  ham"]
     assert fix_indentation(matched_lines, searched_lines, replaced_lines) == expected
 
 
 def test_different_number_of_non_empty_lines():
-    # matched_indents and searched_indents have different lengths => return replaced_lines
     matched_lines = [
         "    foo",
         "      ",
@@ -394,13 +383,9 @@ def test_different_number_of_non_empty_lines():
 
 
 def test_inconsistent_indentation_difference():
-    # The diffs are not all the same => return replaced_lines
     matched_lines = ["    foo", "        bar"]
     searched_lines = ["  foo", "    bar"]
     replaced_lines = ["spam", "ham"]
-    # For the first pair, diff = len("  ") - len("    ") = 2 - 4 = -2
-    # For the second pair, diff = len("    ") - len("        ") = 4 - 8 = -4
-    # Not all diffs are equal => should return replaced_lines
     assert (
         fix_indentation(matched_lines, searched_lines, replaced_lines) == replaced_lines
     )

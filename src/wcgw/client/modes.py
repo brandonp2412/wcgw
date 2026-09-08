@@ -185,14 +185,11 @@ DEFAULT_MODES: dict[Modes, ModeImpl] = {
 def modes_to_state(
     mode: ModesConfig,
 ) -> tuple[BashCommandMode, FileEditMode, WriteIfEmptyMode, Modes]:
-    # First get default mode config
     if isinstance(mode, str):
         mode_impl = DEFAULT_MODES[mode]  # converts str to Modes enum
         mode_name: Modes = mode
     else:
-        # For CodeWriterMode, use code_writer as base and override
         mode_impl = DEFAULT_MODES["code_writer"]
-        # Override with custom settings from CodeWriterMode
         mode_impl = ModeImpl(
             bash_command_mode=BashCommandMode(
                 mode_impl.bash_command_mode.bash_mode,

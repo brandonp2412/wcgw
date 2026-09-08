@@ -32,12 +32,10 @@ class FastPathAnalyzer:
         self, paths: List[str]
     ) -> List[Tuple[float, List[str], List[str]]]:
         """Calculate log probability for multiple paths at once."""
-        # Batch tokenize all paths
         all_tokens = self.tokenize_batch(paths)
 
         results = []
         for tokens in all_tokens:
-            # Calculate sum of log probabilities for each path
             log_prob_sum = 0.0
             unknown_tokens = []
             for token in tokens:
