@@ -225,10 +225,8 @@ class BashCommand(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def combine(cls, data: Any) -> Any:
-        # If action_json is already provided, don't wrap it
         if isinstance(data, dict) and "action_json" in data:
             return data
-        # Otherwise wrap the data in action_json
         return {"action_json": data}
 
     @model_serializer(mode="plain")
@@ -299,12 +297,10 @@ class ReadFiles(BaseModel):
                     line_spec = parts[1]
 
                     if line_spec.isdigit():
-                        # Format: file.py:10
                         try:
                             start_line_num = int(line_spec)
                             path_part = potential_path
                         except ValueError:
-                            # Keep the original path if conversion fails
                             pass
 
                     elif "-" in line_spec:
@@ -312,27 +308,21 @@ class ReadFiles(BaseModel):
                         line_parts = line_spec.split("-", 1)
 
                         if not line_parts[0] and line_parts[1].isdigit():
-                            # Format: file.py:-20
                             try:
                                 end_line_num = int(line_parts[1])
                                 path_part = potential_path
                             except ValueError:
-                                # Keep original path
                                 pass
 
                         elif line_parts[0].isdigit():
-                            # Format: file.py:10-20 or file.py:10-
                             try:
                                 start_line_num = int(line_parts[0])
 
                                 if line_parts[1].isdigit():
-                                    # file.py:10-20
                                     end_line_num = int(line_parts[1])
 
-                                # In both cases, update the path
                                 path_part = potential_path
                             except ValueError:
-                                # Keep original path
                                 pass
 
             clean_file_paths.append(path_part)
