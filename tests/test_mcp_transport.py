@@ -41,6 +41,7 @@ async def test_stdio_transport_keeps_conversation_shells_concurrent(tmp_path) ->
                 "task_id_to_resume": "",
                 "mode_name": "wcgw",
                 "thread_id": "",
+                "task_label": "transport concurrency test",
             }
             first_init, second_init = await asyncio.gather(
                 session.call_tool("Initialize", init_args),
@@ -62,6 +63,7 @@ async def test_stdio_transport_keeps_conversation_shells_concurrent(tmp_path) ->
                         "type": "command",
                         "command": "pwd",
                         "thread_id": first_thread,
+                        "task_label": "transport concurrency test",
                         "wait_for_seconds": 0.5,
                     },
                 ),
@@ -71,6 +73,7 @@ async def test_stdio_transport_keeps_conversation_shells_concurrent(tmp_path) ->
                         "type": "command",
                         "command": "pwd",
                         "thread_id": second_thread,
+                        "task_label": "transport concurrency test",
                         "wait_for_seconds": 0.5,
                     },
                 ),
@@ -83,6 +86,7 @@ async def test_stdio_transport_keeps_conversation_shells_concurrent(tmp_path) ->
                         "type": "command",
                         "command": "sleep 1",
                         "thread_id": first_thread,
+                        "task_label": "transport concurrency test",
                         "wait_for_seconds": 2,
                     },
                 )
@@ -95,6 +99,7 @@ async def test_stdio_transport_keeps_conversation_shells_concurrent(tmp_path) ->
                         "type": "command",
                         "command": "pwd",
                         "thread_id": second_thread,
+                        "task_label": "transport concurrency test",
                         "wait_for_seconds": 0.5,
                     },
                 )
@@ -133,6 +138,7 @@ async def test_streamable_http_transport_serves_wcgw(tmp_path, monkeypatch) -> N
                             "task_id_to_resume": "",
                             "mode_name": "wcgw",
                             "thread_id": "",
+                            "task_label": "http transport test",
                         },
                     )
                     match = re.search(r"Use thread_id=(\w+)", result_text(initialized))
@@ -147,6 +153,7 @@ async def test_streamable_http_transport_serves_wcgw(tmp_path, monkeypatch) -> N
                             "task_id_to_resume": "",
                             "mode_name": "wcgw",
                             "thread_id": "",
+                            "task_label": "http transport test",
                         },
                     )
                     second_match = re.search(
@@ -163,6 +170,7 @@ async def test_streamable_http_transport_serves_wcgw(tmp_path, monkeypatch) -> N
                                 "type": "command",
                                 "command": "pwd",
                                 "thread_id": first_thread,
+                                "task_label": "http transport test",
                                 "wait_for_seconds": 0.5,
                             },
                         ),
@@ -172,6 +180,7 @@ async def test_streamable_http_transport_serves_wcgw(tmp_path, monkeypatch) -> N
                                 "type": "command",
                                 "command": "pwd",
                                 "thread_id": second_thread,
+                                "task_label": "http transport test",
                                 "wait_for_seconds": 0.5,
                             },
                         ),
@@ -183,6 +192,7 @@ async def test_streamable_http_transport_serves_wcgw(tmp_path, monkeypatch) -> N
                                 "type": "command",
                                 "command": "sleep 1",
                                 "thread_id": first_thread,
+                                "task_label": "http transport test",
                                 "wait_for_seconds": 2,
                             },
                         )
@@ -195,6 +205,7 @@ async def test_streamable_http_transport_serves_wcgw(tmp_path, monkeypatch) -> N
                                 "type": "command",
                                 "command": "pwd",
                                 "thread_id": second_thread,
+                                "task_label": "http transport test",
                                 "wait_for_seconds": 0.5,
                             },
                         ),

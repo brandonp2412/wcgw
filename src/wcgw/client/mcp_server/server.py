@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -43,11 +44,36 @@ logger = logging.getLogger("wcgw")
 
 
 class Console:
+    def __init__(self) -> None:
+        self._state: BashState | None = None
+        self._task_label = ""
+        self._tool = ""
+
+    def set_context(self, state: BashState, task_label: str, tool: str) -> None:
+        self._state = state
+        self._task_label = " ".join(task_label.split())[:240]
+        self._tool = tool
+
+    def _emit(self, msg: Any) -> None:
+        if self._state is None:
+            logger.info(str(msg))
+            return
+        payload = {
+            "event": "log",
+            "thread_id": self._state.current_thread_id,
+            "task": self._task_label,
+            "tool": self._tool,
+            "workspace": self._state.workspace_root,
+            "cwd": self._state.cwd,
+            "message": str(msg),
+        }
+        logger.info("WCGW_EVENT %s", json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
+
     def print(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        logger.info(msg)
+        self._emit(msg)
 
     def log(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        logger.info(msg)
+        self._emit(msg)
 
 
 @server.list_resources()  # type: ignore
@@ -113,11 +139,18 @@ async def handle_call_tool(
     tool_type = which_tool_name(name)
     tool_call = parse_tool_by_name(name, arguments)
     state = await state_for_tool(tool_call)
+    task_label = (
+        tool_call.action_json.task_label
+        if isinstance(tool_call, BashCommand)
+        else tool_call.task_label
+    )
 
     try:
         if isinstance(tool_call, FileWriteOrEdit):
             sync_legacy_whitelist_into_state(state)
         async with state_call_lock(state.current_thread_id):
+            if isinstance(state.console, Console):
+                state.console.set_context(state, task_label, name)
             output_or_dones, _ = await asyncio.to_thread(
                 get_tool_output,
                 Context(state, state.console),
