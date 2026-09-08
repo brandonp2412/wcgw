@@ -832,7 +832,6 @@ def test_read_image(context: Context, temp_dir: str) -> None:
 
     test_image = os.path.join(temp_dir, "test.png")
     with open(test_image, "wb") as f:
-        # Write a minimal valid PNG file
         f.write(
             bytes.fromhex(
                 "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63640000000600005c0010ef0000000049454e44ae426082"
