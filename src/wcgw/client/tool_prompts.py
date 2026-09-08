@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from mcp.types import Tool, ToolAnnotations
 
@@ -12,13 +13,22 @@ from ..types_ import (
 )
 from .schema_generator import remove_titles_from_schema
 
+
+def task_aware_schema(model: Any) -> dict[str, Any]:
+    schema = remove_titles_from_schema(model.model_json_schema())
+    required = schema.setdefault("required", [])
+    if "task_label" not in required:
+        required.append("task_label")
+    return schema
+
+
 with open(os.path.join(os.path.dirname(__file__), "diff-instructions.txt")) as f:
     diffinstructions = f.read()
 
 
 TOOL_PROMPTS = [
     Tool(
-        inputSchema=remove_titles_from_schema(Initialize.model_json_schema()),
+        inputSchema=task_aware_schema(Initialize),
         name="Initialize",
         description="""
 - Always call this at the start of the conversation before using any of the shell tools from wcgw.
@@ -36,7 +46,7 @@ TOOL_PROMPTS = [
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     ),
     Tool(
-        inputSchema=remove_titles_from_schema(BashCommand.model_json_schema()),
+        inputSchema=task_aware_schema(BashCommand),
         name="BashCommand",
         description="""
 - Execute a bash command. This is stateful (beware with subsequent calls).
@@ -55,7 +65,7 @@ TOOL_PROMPTS = [
         annotations=ToolAnnotations(destructiveHint=True, openWorldHint=True),
     ),
     Tool(
-        inputSchema=remove_titles_from_schema(ReadFiles.model_json_schema()),
+        inputSchema=task_aware_schema(ReadFiles),
         name="ReadFiles",
         description="""
 - Read full file content of one or more files.
@@ -67,13 +77,13 @@ TOOL_PROMPTS = [
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     ),
     Tool(
-        inputSchema=remove_titles_from_schema(ReadImage.model_json_schema()),
+        inputSchema=task_aware_schema(ReadImage),
         name="ReadImage",
         description="Read an image from the shell. Use the thread_id returned by Initialize when available; legacy clients may omit it.",
         annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
     ),
     Tool(
-        inputSchema=remove_titles_from_schema(FileWriteOrEdit.model_json_schema()),
+        inputSchema=task_aware_schema(FileWriteOrEdit),
         name="FileWriteOrEdit",
         description="""
 - Writes or edits a file based on the percentage of changes.
@@ -89,7 +99,7 @@ TOOL_PROMPTS = [
         ),
     ),
     Tool(
-        inputSchema=remove_titles_from_schema(ContextSave.model_json_schema()),
+        inputSchema=task_aware_schema(ContextSave),
         name="ContextSave",
         description="""
  Saves provided description and file contents of all the relevant file paths or globs in a single text file.

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import re
 import threading
@@ -61,6 +62,19 @@ def setup_bash_state():
         server.STATE_CALL_LOCKS.clear()
         server.STATE_CREATION_LOCKS.clear()
         server.BASH_STATE = None
+
+
+def test_console_emits_task_context(setup_bash_state, caplog):
+    console = setup_bash_state.console
+    console.set_context(setup_bash_state, "fix wcgw live grouping", "BashCommand")
+    with caplog.at_level("INFO", logger="wcgw"):
+        console.print("hello")
+    event_line = next(record.message for record in caplog.records if "WCGW_EVENT " in record.message)
+    payload = json.loads(event_line.split("WCGW_EVENT ", 1)[1])
+    assert payload["thread_id"] == setup_bash_state.current_thread_id
+    assert payload["task"] == "fix wcgw live grouping"
+    assert payload["tool"] == "BashCommand"
+    assert payload["message"] == "hello"
 
 
 @pytest.mark.asyncio
@@ -131,6 +145,8 @@ async def test_handle_list_tools():
         assert tool.inputSchema is not None
         assert isinstance(tool.description, str)
         assert len(tool.description.strip()) > 0
+        assert "task_label" in tool.inputSchema["properties"]
+        assert "task_label" in tool.inputSchema.get("required", [])
 
         if tool.name == "Initialize":
             properties = tool.inputSchema["properties"]

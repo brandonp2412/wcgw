@@ -61,6 +61,12 @@ class CodeWriterMode(BaseModel):
 
 ModesConfig = Union[Literal["wcgw", "architect", "yolo"], CodeWriterMode]
 
+TASK_LABEL_DESCRIPTION = (
+    "Concise stable label for the user's current task. Reuse the exact same value "
+    "for every wcgw tool call made for that user request; change it when the user "
+    "moves to a different task."
+)
+
 
 class Initialize(BaseModel):
     type: Literal[
@@ -80,6 +86,7 @@ class Initialize(BaseModel):
     thread_id: str = Field(
         description="Use the thread_id created in first_call, leave it as empty string if first_call"
     )
+    task_label: str = Field(default="", description=TASK_LABEL_DESCRIPTION)
     allowed_globs: Optional[Literal["all"] | list[str]] = Field(
         default=None,
         description="File globs that are allowed to be edited. Set to 'all' to allow all files, or provide a list of glob patterns. Only required when mode_name is 'code_writer'.",
@@ -143,6 +150,7 @@ class Initialize(BaseModel):
 class CommandBase(BaseModel):
     wait_for_seconds: Optional[float] = None
     thread_id: str
+    task_label: str = Field(default="", description=TASK_LABEL_DESCRIPTION)
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
@@ -217,6 +225,7 @@ class ActionJsonSchema(BaseModel):
     )
     wait_for_seconds: Optional[float] = None
     thread_id: str
+    task_label: str = Field(default="", description=TASK_LABEL_DESCRIPTION)
 
 
 class BashCommand(BaseModel):
@@ -241,6 +250,7 @@ class BashCommand(BaseModel):
 class ReadImage(BaseModel):
     file_path: str
     thread_id: str = ""
+    task_label: str = Field(default="", description=TASK_LABEL_DESCRIPTION)
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
@@ -255,6 +265,7 @@ class WriteIfEmpty(BaseModel):
 class ReadFiles(BaseModel):
     file_paths: list[str]
     thread_id: str = ""
+    task_label: str = Field(default="", description=TASK_LABEL_DESCRIPTION)
     _start_line_nums: List[Optional[int]] = PrivateAttr(default_factory=lambda: [])
     _end_line_nums: List[Optional[int]] = PrivateAttr(default_factory=lambda: [])
 
@@ -349,6 +360,7 @@ class FileWriteOrEdit(BaseModel):
         description="#3: content/edit blocks. Must be after #2 in the tool xml"
     )
     thread_id: str = Field(description="#4: thread_id")
+    task_label: str = Field(default="", description="#5: " + TASK_LABEL_DESCRIPTION)
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
@@ -361,6 +373,7 @@ class ContextSave(BaseModel):
     description: str
     relevant_file_globs: list[str]
     thread_id: str = ""
+    task_label: str = Field(default="", description=TASK_LABEL_DESCRIPTION)
 
     def model_post_init(self, __context: Any) -> None:
         self.thread_id = normalize_thread_id(self.thread_id)
