@@ -79,7 +79,6 @@ def test_comments() -> None:
     assert statements[1].node_type == "comment"
     assert statements[2].node_type == "command"
 
-    # Test inline comment (parsed as separate statement after command)
     statements = parser.parse_string("echo hello # inline comment")
     assert len(statements) == 2
     assert statements[0].text == "echo hello"
@@ -146,12 +145,10 @@ def test_line_continuation() -> None:
     """Test that line continuations with backslash are treated as single statements."""
     parser = BashStatementParser()
 
-    # Test backslash continuation (complete - should be 1 statement)
     statements = parser.parse_string("echo hello \\\n  world \\\n  again")
     assert len(statements) == 1
     assert statements[0].node_type == "command"
 
-    # Test multiple commands with continuation
     statements = parser.parse_string("echo a \\\n  b\necho c")
     assert len(statements) == 2
 
@@ -160,12 +157,10 @@ def test_here_documents() -> None:
     """Test that here documents are treated as single statements."""
     parser = BashStatementParser()
 
-    # Test here document (complete - should be 1 statement)
     statements = parser.parse_string("cat <<EOF\nline 1\nline 2\nEOF")
     assert len(statements) == 1
     assert statements[0].node_type == "redirected_statement"
 
-    # Test here document with command after
     statements = parser.parse_string("cat <<EOF\ndata\nEOF\necho done")
     assert len(statements) == 2
 
@@ -174,17 +169,14 @@ def test_subshells_and_command_substitution() -> None:
     """Test subshells and command substitution."""
     parser = BashStatementParser()
 
-    # Test subshell (complete - should be 1 statement)
     statements = parser.parse_string("(cd /tmp && ls)")
     assert len(statements) == 1
     assert statements[0].node_type == "subshell"
 
-    # Test command substitution in assignment
     statements = parser.parse_string("result=$(echo hello)")
     assert len(statements) == 1
     assert statements[0].node_type == "variable_assignment"
 
-    # Test nested subshells
     statements = parser.parse_string("echo $(echo $(echo nested))")
     assert len(statements) == 1
     assert statements[0].node_type == "command"
@@ -194,12 +186,10 @@ def test_compound_statements() -> None:
     """Test compound statements with braces."""
     parser = BashStatementParser()
 
-    # Test brace group (complete - should be 1 statement)
     statements = parser.parse_string("{ echo a; echo b; }")
     assert len(statements) == 1
     assert statements[0].node_type == "compound_statement"
 
-    # Test brace group with newlines
     statements = parser.parse_string("{\n  echo a\n  echo b\n}")
     assert len(statements) == 1
     assert statements[0].node_type == "compound_statement"
@@ -209,12 +199,10 @@ def test_complex_pipelines() -> None:
     """Test complex pipelines and command chains."""
     parser = BashStatementParser()
 
-    # Test multi-line pipeline (complete - should be 1 statement)
     statements = parser.parse_string("cat file | \\\n  grep pattern | \\\n  sort")
     assert len(statements) == 1
     assert statements[0].node_type == "pipeline"
 
-    # Test command chain with && and || (complete - should be 1 statement)
     statements = parser.parse_string("cmd1 && \\\n  cmd2 || \\\n  cmd3")
     assert len(statements) == 1
     assert statements[0].node_type == "list"
@@ -224,7 +212,6 @@ def test_mixed_complete_statements() -> None:
     """Test mixing different types of complete statements."""
     parser = BashStatementParser()
 
-    # Test function followed by call
     statements = parser.parse_string(
         "myfunc() {\n  echo hello\n}\nmyfunc\necho done"
     )
@@ -233,7 +220,6 @@ def test_mixed_complete_statements() -> None:
     assert statements[1].node_type == "command"
     assert statements[2].node_type == "command"
 
-    # Test if statement followed by command
     statements = parser.parse_string("if true; then\n  echo yes\nfi\necho after")
     assert len(statements) == 2
     assert statements[0].node_type == "if_statement"
