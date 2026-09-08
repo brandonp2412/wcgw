@@ -415,7 +415,6 @@ def test_interaction_commands(context: Context, temp_dir: str) -> None:
     )
     assert "status = still running" in outputs[0]
 
-    # Send Ctrl-C
     cmd = BashCommand(
         action_json=SendSpecials(
             send_specials=["Ctrl-c"], thread_id=context.bash_state._current_thread_id

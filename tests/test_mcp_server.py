@@ -30,15 +30,12 @@ from wcgw.client.mcp_server.server import (
 )
 
 
-# Reset server.BASH_STATE before all tests
 @pytest.fixture(scope="function", autouse=True)
 def setup_bash_state():
     """Setup BashState for each test"""
 
-    # Update CONFIG immediately
     CONFIG.update(3, 55, 5)
 
-    # Create new BashState with mode
     home_dir = os.path.expanduser("~")
     bash_state = BashState(Console(), home_dir, None, None, None, "wcgw", False, None)
     server.BASH_STATES.clear()

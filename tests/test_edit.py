@@ -209,7 +209,6 @@ def hello():
             context, edit_args, 1.0, lambda x, y: ("", 0.0), None, None
         )
 
-    # Test multiple matches
     with open(test_file, "w") as f:
         f.write("""
 def hello():
