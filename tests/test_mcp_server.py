@@ -86,7 +86,6 @@ async def test_handle_list_prompts(setup_bash_state):
     assert len(prompts) > 0
     assert isinstance(prompts[0], Prompt)
     assert "KnowledgeTransfer" in [p.name for p in prompts]
-    # Test prompt structure
     kt_prompt = next(p for p in prompts if p.name == "KnowledgeTransfer")
     assert (
         kt_prompt.description
@@ -96,7 +95,6 @@ async def test_handle_list_prompts(setup_bash_state):
 
 @pytest.mark.asyncio
 async def test_handle_get_prompt(setup_bash_state):
-    # Test valid prompt
     result = await handle_get_prompt("KnowledgeTransfer", None)
     assert isinstance(result, GetPromptResult)
     assert len(result.messages) == 1
@@ -104,11 +102,9 @@ async def test_handle_get_prompt(setup_bash_state):
     assert result.messages[0].role == "user"
     assert isinstance(result.messages[0].content, TextContent)
 
-    # Test invalid prompt
     with pytest.raises(KeyError):
         await handle_get_prompt("NonExistentPrompt", None)
 
-    # Test with arguments
     result = await handle_get_prompt("KnowledgeTransfer", {"arg": "value"})
     assert isinstance(result, GetPromptResult)
 
@@ -120,7 +116,6 @@ async def test_handle_list_tools():
     assert isinstance(tools, list)
     assert len(tools) > 0
 
-    # Check all required tools are present
     tool_names = {tool.name for tool in tools}
     required_tools = {
         "Initialize",
@@ -134,14 +129,12 @@ async def test_handle_list_tools():
         f"Missing tools: {required_tools - tool_names}"
     )
 
-    # Test each tool's schema and description
     for tool in tools:
         assert isinstance(tool, ToolParam)
         assert tool.inputSchema is not None
         assert isinstance(tool.description, str)
         assert len(tool.description.strip()) > 0
 
-        # Test specific tool properties based on tool type
         if tool.name == "Initialize":
             properties = tool.inputSchema["properties"]
             assert "mode_name" in properties
@@ -161,7 +154,6 @@ async def test_handle_list_tools():
             assert "command" in properties
             assert "wait_for_seconds" in properties
             assert "thread_id" in properties
-            # Check type field has all the command types
             type_refs = set(properties)
             required_types = {
                 "command",
@@ -183,11 +175,9 @@ async def test_handle_list_tools():
 
 @pytest.mark.asyncio
 async def test_handle_call_tool(setup_bash_state):
-    # Test missing arguments
     with pytest.raises(ValueError, match="Missing arguments"):
         await handle_call_tool("Initialize", None)
 
-    # Test Initialize tool with valid arguments
     init_args = {
         "any_workspace_path": "",
         "initial_files_to_read": [],
@@ -204,7 +194,6 @@ async def test_handle_call_tool(setup_bash_state):
     initialized_thread = re.search(r"Use thread_id=(\w+)", result[0].text)
     assert initialized_thread is not None
 
-    # Test JSON string argument handling
     json_args = {
         "action_json": {
             "command": "ls",
@@ -214,7 +203,6 @@ async def test_handle_call_tool(setup_bash_state):
     result = await handle_call_tool("BashCommand", json_args)
     assert isinstance(result, list)
 
-    # Test validation error handling
     with pytest.raises(ValidationError):
         invalid_args = {
             "any_workspace_path": 123,  # Invalid type
@@ -224,7 +212,6 @@ async def test_handle_call_tool(setup_bash_state):
         }
         await handle_call_tool("Initialize", invalid_args)
 
-    # Test tool exception handling
     with patch(
         "wcgw.client.mcp_server.server.get_tool_output",
         side_effect=Exception("Test error"),
@@ -518,11 +505,9 @@ async def test_legacy_read_authorizes_later_threaded_write(setup_bash_state, tmp
 
 @pytest.mark.asyncio
 async def test_handle_call_tool_image_response(setup_bash_state):
-    # Test handling of image content
     mock_image_data = "fake_image_data"
     mock_media_type = "image/png"
 
-    # Create a mock image object that matches the expected response
     mock_image = Mock()
     mock_image.data = mock_image_data
     mock_image.media_type = mock_media_type
@@ -540,25 +525,20 @@ async def test_handle_call_tool_image_response(setup_bash_state):
 @pytest.mark.asyncio
 async def test_main(setup_bash_state):
     CONFIG.update(3, 55, 5)  # Ensure CONFIG is set before main()
-    # Mock the version function
     with patch("importlib.metadata.version", return_value="1.0.0") as mock_version:
-        # Mock the stdio server
         mock_read_stream = AsyncMock()
         mock_write_stream = AsyncMock()
         mock_context = AsyncMock()
         mock_context.__aenter__.return_value = (mock_read_stream, mock_write_stream)
 
         with patch("mcp.server.stdio.stdio_server", return_value=mock_context):
-            # Mock server.run to prevent actual server start
             with patch("wcgw.client.mcp_server.server.server.run") as mock_run:
                 await main()
 
-                # Verify CONFIG update
                 assert CONFIG.timeout == 3
                 assert CONFIG.timeout_while_output == 55
                 assert CONFIG.output_wait_patience == 5
 
-                # Verify server run was called with correct initialization
                 mock_run.assert_called_once()
                 init_options = mock_run.call_args[0][2]
                 assert isinstance(init_options, InitializationOptions)
