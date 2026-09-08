@@ -53,13 +53,11 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
         console=console,
     )
     yield ctx
-    # Cleanup after each test
     bash_state.cleanup()
 
 
 def test_file_edit(context: Context, temp_dir: str) -> None:
     """Test the FileWriteOrEdit tool."""
-    # First initialize
     init_args = Initialize(
         thread_id="",
         any_workspace_path=temp_dir,
@@ -72,12 +70,10 @@ def test_file_edit(context: Context, temp_dir: str) -> None:
         context, init_args, 1.0, lambda x, y: ("", 0.0), None, None
     )
 
-    # Create a test file
     test_file = os.path.join(temp_dir, "test.py")
     with open(test_file, "w") as f:
         f.write("def hello():\n    print('hello')\n")
 
-    # Test editing the file
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
         file_path=test_file,
@@ -97,12 +93,10 @@ def hello():
 
     assert len(outputs) == 1
 
-    # Verify the change
     with open(test_file) as f:
         content = f.read()
     assert "hello world" in content
 
-    # Test indentation match
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
         file_path=test_file,
@@ -123,12 +117,10 @@ def hello():
     assert len(outputs) == 1
     assert "Warning: matching without considering indentation" in outputs[0]
 
-    # Verify the change
     with open(test_file) as f:
         content = f.read()
     assert "print('ok')" in content
 
-    # Test no match with partial
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
         file_path=test_file,
@@ -154,7 +146,6 @@ def hello():
             content = f.read()
         assert "print('ok')" in content
 
-    # Test syntax error
     edit_args = FileWriteOrEdit(
         thread_id=context.bash_state.current_thread_id,
         file_path=test_file,
@@ -176,7 +167,6 @@ def hello():
     assert len(outputs) == 1
     assert "tree-sitter reported syntax errors" in outputs[0]
 
-    # Verify the change
     with open(test_file) as f:
         content = f.read()
     assert "print('ok\")" in content
