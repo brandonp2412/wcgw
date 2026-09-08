@@ -239,7 +239,6 @@ def test_mixed_complete_statements() -> None:
     assert statements[0].node_type == "if_statement"
     assert statements[1].node_type == "command"
 
-    # Test comment, command, and control structure
     statements = parser.parse_string(
         "# Setup\nexport VAR=value\nfor i in 1 2; do\n  echo $i\ndone"
     )
