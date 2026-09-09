@@ -115,7 +115,6 @@ def initialize(
     mode: ModesConfig,
     thread_id: str,
 ) -> tuple[str, Context, dict[str, list[tuple[int, int]]]]:
-    # Expand the workspace path
     any_workspace_path = expand_user(any_workspace_path)
     repo_context = ""
 
@@ -386,24 +385,21 @@ def reset_wcgw(
             + "\n"
             + get_status(context.bash_state, is_bg=False)
         )
-    else:
-        # Regular reset without mode change - keep same mode but update directory
-        bash_command_mode = context.bash_state.bash_command_mode
-        file_edit_mode = context.bash_state.file_edit_mode
-        write_if_empty_mode = context.bash_state.write_if_empty_mode
-        mode = context.bash_state.mode
+    bash_command_mode = context.bash_state.bash_command_mode
+    file_edit_mode = context.bash_state.file_edit_mode
+    write_if_empty_mode = context.bash_state.write_if_empty_mode
+    mode = context.bash_state.mode
 
-        # Reload state with new directory, using the provided thread_id
-        context.bash_state.load_state(
-            bash_command_mode,
-            file_edit_mode,
-            write_if_empty_mode,
-            mode,
-            dict(context.bash_state.whitelist_for_overwrite),
-            starting_directory,
-            starting_directory,
-            thread_id,
-        )
+    context.bash_state.load_state(
+        bash_command_mode,
+        file_edit_mode,
+        write_if_empty_mode,
+        mode,
+        dict(context.bash_state.whitelist_for_overwrite),
+        starting_directory,
+        starting_directory,
+        thread_id,
+    )
     return "Reset successful" + get_status(context.bash_state, is_bg=False)
 
 
@@ -899,18 +895,17 @@ def which_tool(args: str) -> TOOLS:
 def which_tool_name(name: str) -> Type[TOOLS]:
     if name == "BashCommand":
         return BashCommand
-    elif name == "FileWriteOrEdit":
+    if name == "FileWriteOrEdit":
         return FileWriteOrEdit
-    elif name == "ReadImage":
+    if name == "ReadImage":
         return ReadImage
-    elif name == "ReadFiles":
+    if name == "ReadFiles":
         return ReadFiles
-    elif name == "Initialize":
+    if name == "Initialize":
         return Initialize
-    elif name == "ContextSave":
+    if name == "ContextSave":
         return ContextSave
-    else:
-        raise ValueError(f"Unknown tool name: {name}")
+    raise ValueError(f"Unknown tool name: {name}")
 
 
 def parse_tool_by_name(name: str, arguments: dict[str, Any]) -> TOOLS:

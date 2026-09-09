@@ -587,7 +587,6 @@ class BashState:
         return output
 
     def flush_prompt(self) -> None:
-        # Flush remaining prompt
         for _ in range(200):
             try:
                 output = self.expect([" ", pexpect.TIMEOUT], 0.1)
@@ -599,8 +598,6 @@ class BashState:
     def send(self, s: str | bytes, set_as_command: Optional[str]) -> int:
         if set_as_command is not None:
             self.last_command = set_as_command
-        # if s == "\n":
-        #     return self._shell.sendcontrol("m")
         output = self._shell.send(s)
         return output
 
@@ -1110,7 +1107,6 @@ def rstrip(lines: list[str]) -> str:
 
 
 def _incremental_text(text: str, last_pending_output: str) -> str:
-    # text = render_terminal_output(text[-100_000:])
     text = text[-100_000:]
 
     if not last_pending_output:

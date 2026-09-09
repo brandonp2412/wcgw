@@ -195,8 +195,7 @@ The following block matched more than once:
 ```
 Consider adding more context before and after this block to make the match unique.
     """)
-        else:
-            raise SearchReplaceMatchError("""
+        raise SearchReplaceMatchError("""
 One of the blocks matched more than once
 
 Consider adding more context before and after all the blocks to make the match unique.

@@ -28,12 +28,11 @@ def loop(
             limit=limit,
             resume=resume,
         )
-    else:
-        return openai_loop(
-            first_message=first_message,
-            limit=limit,
-            resume=resume,
-        )
+    return openai_loop(
+        first_message=first_message,
+        limit=limit,
+        resume=resume,
+    )
 
 
 if __name__ == "__main__":

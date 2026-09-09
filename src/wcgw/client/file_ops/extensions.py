@@ -6,80 +6,34 @@ based on file extensions.
 """
 from typing import Dict, Optional, Set
 
-# Set of file extensions considered to be source code
-# Each extension should be listed without the dot (e.g., 'py' not '.py')
 SOURCE_CODE_EXTENSIONS: Set[str] = {
-    # Python
     'py', 'pyx', 'pyi', 'pyw',
-    
-    # JavaScript and TypeScript
     'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs',
-    
-    # Web
     'html', 'htm', 'xhtml', 'css', 'scss', 'sass', 'less',
-    
-    # C and C++
     'c', 'h', 'cpp', 'cxx', 'cc', 'hpp', 'hxx', 'hh', 'inl',
-    
-    # C#
     'cs', 'csx',
-    
-    # Java
     'java', 'scala', 'kt', 'kts', 'groovy',
-    
-    # Go
     'go', 'mod',
-    
-    # Rust
     'rs', 'rlib',
-    
-    # Swift
     'swift',
-    
-    # Ruby
     'rb', 'rake', 'gemspec',
-    
-    # PHP
     'php', 'phtml', 'phar', 'phps',
-    
-    # Shell
     'sh', 'bash', 'zsh', 'fish',
-    
-    # PowerShell
     'ps1', 'psm1', 'psd1',
-    
-    # SQL
     'sql', 'ddl', 'dml',
-    
-    # Markup and config
     'xml', 'json', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
-    
-    # Documentation
     'md', 'markdown', 'rst', 'adoc', 'tex',
-    
-    # Build and dependency files
     'Makefile', 'Dockerfile', 'Jenkinsfile',
-    
-    # Haskell
     'hs', 'lhs',
-    
-    # Lisp family
     'lisp', 'cl', 'el', 'clj', 'cljs', 'edn', 'scm',
-    
-    # Erlang and Elixir
     'erl', 'hrl', 'ex', 'exs',
-    
-    # Dart and Flutter
     'dart',
-    
-    # Objective-C
     'm', 'mm',
 }
 
-# Context length limits based on file type (in tokens)
 CONTEXT_LENGTH_LIMITS: Dict[str, int] = {
-    'source_code': 24000,  # For known source code files
-    'default': 8000,       # For all other files
+    'source_code': 24000,
+    'default': 8000,
 }
 
 def is_source_code_file(filename: str) -> bool:

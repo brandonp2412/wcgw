@@ -165,7 +165,6 @@ def get_repo_context(file_or_repo_path: str) -> tuple[str, Path]:
     repo = find_ancestor_with_git(file_or_repo_path_)
     recent_git_files: list[str] = []
 
-    # Determine the context directory
     if repo is not None:
         context_dir = Path(repo.workdir) if repo.workdir else Path(repo.path).parent
     else:
@@ -174,13 +173,10 @@ def get_repo_context(file_or_repo_path: str) -> tuple[str, Path]:
         else:
             context_dir = file_or_repo_path_
 
-    # Load workspace stats from the context directory
     workspace_stats = load_workspace_stats(str(context_dir))
 
-    # Get all files and calculate dynamic max files limit once
     all_files = get_all_files_max_depth(str(context_dir), 10, repo)
 
-    # For Git repositories, get recent files
     if repo is not None:
         dynamic_max_files = calculate_dynamic_file_limit(len(all_files))
         # Get recent git files - get at least 10 or 20% of dynamic_max_files, whichever is larger
@@ -193,10 +189,8 @@ def get_repo_context(file_or_repo_path: str) -> tuple[str, Path]:
         # We don't want dynamic limit for non git folders like /tmp or ~
         dynamic_max_files = 50
 
-    # Calculate probabilities in batch
     path_scores = PATH_SCORER.calculate_path_probabilities_batch(all_files)
 
-    # Create list of (path, score) tuples and sort by score
     path_with_scores = list(zip(all_files, (score[0] for score in path_scores)))
     sorted_files = [
         path for path, _ in sorted(path_with_scores, key=lambda x: x[1], reverse=True)

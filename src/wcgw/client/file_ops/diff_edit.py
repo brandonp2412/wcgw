@@ -303,7 +303,7 @@ class FileEditInput:
             and self.search_replace_offset < n_blocks
         ):
             return [no_match_output]
-        elif self.file_line_offset >= n_file_lines:
+        if self.file_line_offset >= n_file_lines:
             return [
                 FileEditOutput(
                     self.file_lines,
@@ -311,7 +311,7 @@ class FileEditInput:
                     [(slice(0, 0), [], [])],
                 )
             ]
-        elif self.search_replace_offset >= n_blocks:
+        if self.search_replace_offset >= n_blocks:
             return [
                 FileEditOutput(
                     self.file_lines,
@@ -320,11 +320,9 @@ class FileEditInput:
                 )
             ]
 
-        # search for first block
         first_block = self.search_replace_blocks[self.search_replace_offset]
         replace_by = first_block[1]
 
-        # Try exact match
         matches = match_exact(self.file_lines, self.file_line_offset, first_block[0])
 
         all_outputs = list[list[tuple[slice, list[TolerancesHit], list[str]]]]()
