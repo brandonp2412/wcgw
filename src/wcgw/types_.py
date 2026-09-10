@@ -3,7 +3,7 @@ import re
 from typing import Any, List, Literal, Optional, Protocol, Sequence, Union
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import Field, PrivateAttr, model_serializer, model_validator
+from pydantic import ConfigDict, Field, PrivateAttr, model_serializer, model_validator
 
 
 _PIPE_TAIL_RE = re.compile(r"\|\s*tail(?:\s+(?:-n\s*|-)?(\d+))?\s*$")
@@ -28,8 +28,7 @@ def normalize_thread_id(thread_id: str) -> str:
 
 
 class NoExtraArgs(PydanticBaseModel):
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 BaseModel = NoExtraArgs
