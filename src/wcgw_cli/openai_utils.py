@@ -58,7 +58,10 @@ def get_output_cost(
         item = cast(ChatCompletionAssistantMessageParam, item)
         toolcalls = item["tool_calls"]
         for tool_call in toolcalls or []:
-            output_tokens += estimate_tokens(tool_call["function"]["arguments"])
+            if tool_call["type"] == "function":
+                output_tokens += estimate_tokens(tool_call["function"]["arguments"])
+            else:
+                output_tokens += estimate_tokens(tool_call["custom"]["input"])
     elif isinstance(item, ParsedChatCompletionMessage):
         if item.tool_calls:
             for tool_callf in item.tool_calls:
