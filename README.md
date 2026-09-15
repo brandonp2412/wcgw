@@ -115,6 +115,16 @@ The MCP endpoint is `http://127.0.0.1:8765/mcp/`. Binding to loopback keeps the
 server local while allowing an HTTP-capable local gateway to multiplex requests
 without sharing one stdio pipe.
 
+On Linux with a user systemd manager, WCGW places each shell in its own transient
+systemd scope. This is resource accounting and failure isolation only: it does not
+add filesystem, network, device, namespace, capability, command, or privilege
+restrictions. It keeps memory-heavy child processes such as compilers and build
+systems out of the long-lived MCP server's service cgroup, so an OOM-killed build
+does not make the MCP endpoint fail with it. Set `WCGW_SHELL_SYSTEMD_SCOPE=off`
+to disable this behavior. `WCGW_SHELL_MEMORY_HIGH` may be set to a systemd size
+such as `3G` to apply soft memory pressure to each shell scope; WCGW does not set
+a hard `MemoryMax`.
+
 _If there's an error in setting up_
 
 - If there's an error like "uv ENOENT", make sure `uv` is installed. Then run 'which uv' in the terminal, and use its output in place of "uv" in the configuration.

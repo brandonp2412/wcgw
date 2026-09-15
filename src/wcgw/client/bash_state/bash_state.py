@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import shlex
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -368,6 +369,69 @@ fi
         console.log(f"Failed to update {rc_file_path}: {e}")
 
 
+def _systemd_user_manager_available() -> bool:
+    if platform.system() != "Linux":
+        return False
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "").strip()
+    if not runtime_dir:
+        return False
+    return os.path.exists(os.path.join(runtime_dir, "systemd", "private"))
+
+
+def _systemd_scope_enabled() -> bool:
+    setting = os.environ.get("WCGW_SHELL_SYSTEMD_SCOPE", "auto").strip().lower()
+    if setting in {"0", "false", "no", "off"}:
+        return False
+    if setting in {"1", "true", "yes", "on"}:
+        return True
+    return _systemd_user_manager_available()
+
+
+def _shell_launch_argv(shell_argv: list[str], console: Console) -> list[str]:
+    if not _systemd_scope_enabled():
+        return shell_argv
+
+    systemd_run = shutil.which("systemd-run")
+    if systemd_run is None:
+        console.log("systemd-run unavailable; starting shell without a transient scope")
+        return shell_argv
+
+    scope_name = f"wcgw-shell-{uuid4().hex[:16]}.scope"
+    launch_argv = [
+        systemd_run,
+        "--user",
+        "--scope",
+        "--quiet",
+        "--collect",
+        f"--unit={scope_name}",
+    ]
+    memory_high = os.environ.get("WCGW_SHELL_MEMORY_HIGH", "").strip()
+    if memory_high:
+        launch_argv.extend(["--property", f"MemoryHigh={memory_high}"])
+    launch_argv.extend(shell_argv)
+    return launch_argv
+
+
+def _spawn_shell(
+    shell_argv: list[str],
+    overrideenv: dict[str, str],
+    initial_dir: str,
+    console: Console,
+) -> "pexpect.spawn[str]":
+    launch_argv = _shell_launch_argv(shell_argv, console)
+    return pexpect.spawn(
+        launch_argv[0],
+        args=launch_argv[1:],
+        env=overrideenv,
+        echo=True,
+        encoding="utf-8",
+        timeout=CONFIG.timeout,
+        cwd=initial_dir,
+        codec_errors="backslashreplace",
+        dimensions=(500, 160),
+    )
+
+
 def start_shell(
     is_restricted_mode: bool,
     initial_dir: str,
@@ -375,9 +439,9 @@ def start_shell(
     over_screen: bool,
     shell_path: str,
 ) -> tuple["pexpect.spawn[str]", str]:
-    cmd = shell_path
-    if is_restricted_mode and cmd.split("/")[-1] == "bash":
-        cmd += " -r"
+    shell_argv = [shell_path]
+    if is_restricted_mode and os.path.basename(shell_path) == "bash":
+        shell_argv.append("-r")
 
     overrideenv = {
         **os.environ,
@@ -389,16 +453,7 @@ def start_shell(
         "PAGER": "cat",
     }
     try:
-        shell = pexpect.spawn(
-            cmd,
-            env=overrideenv,
-            echo=True,
-            encoding="utf-8",
-            timeout=CONFIG.timeout,
-            cwd=initial_dir,
-            codec_errors="backslashreplace",
-            dimensions=(500, 160),
-        )
+        shell = _spawn_shell(shell_argv, overrideenv, initial_dir, console)
         shell.sendline(PROMPT_STATEMENT)  # Unset prompt command to avoid interfering
         shell.expect(PROMPT_CONST, timeout=CONFIG.timeout)
     except Exception as e:
@@ -406,7 +461,8 @@ def start_shell(
         console.log(f"Error starting shell: {e}. Retrying without rc ...")
 
         shell = pexpect.spawn(
-            "/bin/bash --noprofile --norc",
+            "/bin/bash",
+            args=["--noprofile", "--norc"],
             env=overrideenv,
             echo=True,
             encoding="utf-8",
