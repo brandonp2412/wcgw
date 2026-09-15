@@ -3,6 +3,7 @@ from pathlib import Path
 
 from wcgw.client.bash_state.bash_state import (
     PROMPT_CONST,
+    _shell_launch_argv,
     ensure_wcgw_block_in_rc_file,
     generate_thread_id,
     start_shell,
@@ -20,6 +21,86 @@ class RecordingConsole(Console):
 
     def print(self, msg: str) -> None:
         self.prints.append(msg)
+
+
+def test_systemd_scope_only_changes_resource_accounting(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.platform.system", lambda: "Linux"
+    )
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.shutil.which",
+        lambda command: "/usr/bin/systemd-run" if command == "systemd-run" else None,
+    )
+    monkeypatch.delenv("WCGW_SHELL_SYSTEMD_SCOPE", raising=False)
+    monkeypatch.delenv("WCGW_SHELL_MEMORY_HIGH", raising=False)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.os.path.exists",
+        lambda path: path == "/run/user/1000/systemd/private",
+    )
+
+    argv = _shell_launch_argv(["/usr/bin/zsh"], RecordingConsole())
+
+    assert argv[:5] == [
+        "/usr/bin/systemd-run",
+        "--user",
+        "--scope",
+        "--quiet",
+        "--collect",
+    ]
+    assert argv[-1] == "/usr/bin/zsh"
+    joined = " ".join(argv)
+    for sandbox_property in (
+        "ProtectSystem",
+        "ProtectHome",
+        "PrivateNetwork",
+        "PrivateDevices",
+        "NoNewPrivileges",
+        "CapabilityBoundingSet",
+        "RestrictNamespaces",
+        "MemoryMax",
+    ):
+        assert sandbox_property not in joined
+
+
+def test_systemd_scope_can_apply_soft_memory_pressure(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.platform.system", lambda: "Linux"
+    )
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.shutil.which",
+        lambda command: "/usr/bin/systemd-run" if command == "systemd-run" else None,
+    )
+    monkeypatch.delenv("WCGW_SHELL_SYSTEMD_SCOPE", raising=False)
+    monkeypatch.setenv("WCGW_SHELL_MEMORY_HIGH", "3G")
+    monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.os.path.exists",
+        lambda path: path == "/run/user/1000/systemd/private",
+    )
+
+    argv = _shell_launch_argv(["/usr/bin/zsh"], RecordingConsole())
+
+    assert "MemoryHigh=3G" in argv
+    assert all(not value.startswith("MemoryMax=") for value in argv)
+
+
+def test_systemd_scope_auto_falls_back_without_user_manager(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state.platform.system", lambda: "Linux"
+    )
+    monkeypatch.delenv("WCGW_SHELL_SYSTEMD_SCOPE", raising=False)
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    assert _shell_launch_argv(["/usr/bin/zsh"], RecordingConsole()) == [
+        "/usr/bin/zsh"
+    ]
+
+
+def test_systemd_scope_can_be_disabled_without_restricting_shell(monkeypatch) -> None:
+    monkeypatch.setenv("WCGW_SHELL_SYSTEMD_SCOPE", "off")
+    assert _shell_launch_argv(["/usr/bin/zsh"], RecordingConsole()) == [
+        "/usr/bin/zsh"
+    ]
 
 
 def test_fallback_shell_preserves_initial_directory(tmp_path: Path) -> None:
