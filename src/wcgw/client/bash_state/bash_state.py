@@ -432,6 +432,23 @@ def _spawn_shell(
     )
 
 
+def _prompt_setup_statement(shell_path: str) -> str:
+    if os.path.basename(shell_path) == "zsh":
+        return (
+            "prmptcmdwcgw() { printf '◉ %s──➤ \\r\\e[2K' \"$PWD\"; }; "
+            "precmd_functions=(${precmd_functions:#prmptcmdwcgw}); "
+            "precmd_functions=(prmptcmdwcgw $precmd_functions)"
+        )
+    return f"PROMPT_COMMAND={shlex.quote(PROMPT_COMMAND)}"
+
+
+def _initialize_prompt(shell: "pexpect.spawn[str]", shell_path: str) -> None:
+    shell.setecho(False)
+    shell.sendline(_prompt_setup_statement(shell_path))
+    shell.expect(PROMPT_CONST, timeout=CONFIG.timeout)
+    shell.setecho(True)
+
+
 def start_shell(
     is_restricted_mode: bool,
     initial_dir: str,
@@ -452,26 +469,24 @@ def start_shell(
         "GIT_PAGER": "cat",
         "PAGER": "cat",
     }
+    shell: pexpect.spawn[str] | None = None
     try:
         shell = _spawn_shell(shell_argv, overrideenv, initial_dir, console)
-        shell.sendline(PROMPT_STATEMENT)  # Unset prompt command to avoid interfering
-        shell.expect(PROMPT_CONST, timeout=CONFIG.timeout)
+        _initialize_prompt(shell, shell_path)
     except Exception as e:
         console.print(traceback.format_exc())
         console.log(f"Error starting shell: {e}. Retrying without rc ...")
+        if shell is not None:
+            shell.close(force=True)
 
-        shell = pexpect.spawn(
-            "/bin/bash",
-            args=["--noprofile", "--norc"],
-            env=overrideenv,
-            echo=True,
-            encoding="utf-8",
-            timeout=CONFIG.timeout,
-            cwd=initial_dir,
-            codec_errors="backslashreplace",
+        fallback_path = "/bin/bash"
+        shell = _spawn_shell(
+            [fallback_path, "--noprofile", "--norc"],
+            overrideenv,
+            initial_dir,
+            console,
         )
-        shell.sendline(PROMPT_STATEMENT)
-        shell.expect(PROMPT_CONST, timeout=CONFIG.timeout)
+        _initialize_prompt(shell, fallback_path)
 
     initialdir_hash = md5(
         os.path.normpath(os.path.abspath(initial_dir)).encode()

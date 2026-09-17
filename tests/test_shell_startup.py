@@ -119,6 +119,56 @@ def test_fallback_shell_preserves_initial_directory(tmp_path: Path) -> None:
         shell.close(force=True)
 
 
+def test_fallback_shell_uses_scoped_launcher_and_closes_failed_shell(
+    monkeypatch, tmp_path: Path
+) -> None:
+    class FakeShell:
+        def __init__(self, fail: bool) -> None:
+            self.fail = fail
+            self.closed = False
+
+        def setecho(self, enabled: bool) -> None:
+            return None
+
+        def sendline(self, statement: str) -> None:
+            return None
+
+        def expect(self, pattern, timeout: float) -> int:
+            if self.fail:
+                raise RuntimeError("prompt setup failed")
+            return 0
+
+        def close(self, force: bool) -> None:
+            self.closed = force
+
+    failed_shell = FakeShell(True)
+    fallback_shell = FakeShell(False)
+    launches: list[list[str]] = []
+
+    def fake_spawn_shell(shell_argv, overrideenv, initial_dir, console):
+        launches.append(shell_argv)
+        return failed_shell if len(launches) == 1 else fallback_shell
+
+    monkeypatch.setattr(
+        "wcgw.client.bash_state.bash_state._spawn_shell", fake_spawn_shell
+    )
+
+    shell, _ = start_shell(
+        False,
+        str(tmp_path),
+        RecordingConsole(),
+        False,
+        "/usr/bin/zsh",
+    )
+
+    assert shell is fallback_shell
+    assert failed_shell.closed
+    assert launches == [
+        ["/usr/bin/zsh"],
+        ["/bin/bash", "--noprofile", "--norc"],
+    ]
+
+
 def test_zsh_block_upgrades_existing_config(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     zshrc = tmp_path / ".zshrc"
