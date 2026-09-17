@@ -366,12 +366,10 @@ def state_can_be_reaped(
         return False
     if STATE_ACTIVE_CALLS.get(thread_id, 0) > 0:
         return False
-    if state.state == "pending" or state.background_shells:
-        return False
     last_saved_at = state_last_saved_at(thread_id)
-    if last_saved_at is None:
-        return True
-    return now - last_saved_at >= idle_timeout_seconds
+    if last_saved_at is not None and now - last_saved_at < idle_timeout_seconds:
+        return False
+    return not state.has_running_commands()
 
 
 async def reap_idle_states(now: float, idle_timeout_seconds: float) -> int:
@@ -486,7 +484,7 @@ def streamable_http_app(shell_path: str, host: str, port: int) -> FastAPI:
         app=server,
         event_store=None,
         json_response=False,
-        stateless=False,
+        stateless=True,
         security_settings=security_settings,
         retry_interval=None,
     )
