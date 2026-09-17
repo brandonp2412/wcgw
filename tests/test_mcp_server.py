@@ -568,7 +568,35 @@ async def test_reap_idle_states_removes_inactive_saved_state(
 
 
 @pytest.mark.asyncio
-async def test_reap_idle_states_keeps_active_and_pending_states(
+async def test_reap_idle_states_recovers_completed_pending_state(
+    setup_bash_state, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    state = server.new_state("completed_pending_thread")
+    server.BASH_STATES[state.current_thread_id] = state
+    state.save_state_to_disk()
+
+    state.clear_to_run()
+    state.send("sleep 0.05", set_as_command=None)
+    state.send(state.linesep, set_as_command="sleep 0.05")
+    state.set_pending("")
+    time.sleep(0.1)
+
+    state_file = (
+        tmp_path
+        / "wcgw"
+        / "bash_state"
+        / "completed_pending_thread_bash_state.json"
+    )
+    old_time = time.time() - 7200
+    os.utime(state_file, (old_time, old_time))
+
+    assert await server.reap_idle_states(time.time(), 3600) == 1
+    assert state.current_thread_id not in server.BASH_STATES
+
+
+@pytest.mark.asyncio
+async def test_reap_idle_states_keeps_active_and_running_states(
     setup_bash_state, tmp_path, monkeypatch
 ):
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
@@ -591,15 +619,34 @@ async def test_reap_idle_states_keeps_active_and_pending_states(
         assert state.current_thread_id in server.BASH_STATES
 
     assert state.current_thread_id not in server.STATE_ACTIVE_CALLS
+    state.clear_to_run()
+    state.send("sleep 2", set_as_command=None)
+    state.send(state.linesep, set_as_command="sleep 2")
     state.set_pending("")
     assert await server.reap_idle_states(time.time(), 3600) == 0
     assert state.current_thread_id in server.BASH_STATES
+    state.sendintr()
+    state.expect(state.prompt, timeout=1)
     state.set_repl()
 
-    state.background_shells["background"] = Mock()
+    background = Mock()
+    background.has_running_commands.return_value = True
+    state.background_shells["background"] = background
     assert await server.reap_idle_states(time.time(), 3600) == 0
     assert state.current_thread_id in server.BASH_STATES
     state.background_shells.clear()
+
+
+def test_cleanup_closes_background_shells(setup_bash_state):
+    state = setup_bash_state
+    background = Mock()
+    state.background_shells["background"] = background
+
+    state.cleanup()
+
+    background.close_bg_expect_thread.assert_called_once_with()
+    background.cleanup.assert_called_once_with()
+    assert state.background_shells == {}
 
 
 def test_http_state_idle_timeout_configuration(monkeypatch):
