@@ -125,9 +125,10 @@ add filesystem, network, device, namespace, capability, command, or privilege
 restrictions. It keeps memory-heavy child processes such as compilers and build
 systems out of the long-lived MCP server's service cgroup, so an OOM-killed build
 does not make the MCP endpoint fail with it. Set `WCGW_SHELL_SYSTEMD_SCOPE=off`
-to disable this behavior. `WCGW_SHELL_MEMORY_HIGH` may be set to a systemd size
-such as `3G` to apply soft memory pressure to each shell scope; WCGW does not set
-a hard `MemoryMax`.
+to disable this behavior. `WCGW_SHELL_SYSTEMD_SLICE` can place shell scopes in a
+dedicated user slice for an aggregate resource budget. `WCGW_SHELL_MEMORY_HIGH`,
+`WCGW_SHELL_MEMORY_MAX`, and `WCGW_SHELL_MEMORY_SWAP_MAX` accept systemd sizes
+such as `3G` to set soft, hard, and swap limits on each shell scope.
 
 _If there's an error in setting up_
 

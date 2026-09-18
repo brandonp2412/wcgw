@@ -405,9 +405,18 @@ def _shell_launch_argv(shell_argv: list[str], console: Console) -> list[str]:
         "--collect",
         f"--unit={scope_name}",
     ]
+    systemd_slice = os.environ.get("WCGW_SHELL_SYSTEMD_SLICE", "").strip()
+    if systemd_slice:
+        launch_argv.append(f"--slice={systemd_slice}")
     memory_high = os.environ.get("WCGW_SHELL_MEMORY_HIGH", "").strip()
     if memory_high:
         launch_argv.extend(["--property", f"MemoryHigh={memory_high}"])
+    memory_max = os.environ.get("WCGW_SHELL_MEMORY_MAX", "").strip()
+    if memory_max:
+        launch_argv.extend(["--property", f"MemoryMax={memory_max}"])
+    memory_swap_max = os.environ.get("WCGW_SHELL_MEMORY_SWAP_MAX", "").strip()
+    if memory_swap_max:
+        launch_argv.extend(["--property", f"MemorySwapMax={memory_swap_max}"])
     launch_argv.extend(shell_argv)
     return launch_argv
 

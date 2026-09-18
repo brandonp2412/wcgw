@@ -33,6 +33,9 @@ def test_systemd_scope_only_changes_resource_accounting(monkeypatch) -> None:
     )
     monkeypatch.delenv("WCGW_SHELL_SYSTEMD_SCOPE", raising=False)
     monkeypatch.delenv("WCGW_SHELL_MEMORY_HIGH", raising=False)
+    monkeypatch.delenv("WCGW_SHELL_MEMORY_MAX", raising=False)
+    monkeypatch.delenv("WCGW_SHELL_MEMORY_SWAP_MAX", raising=False)
+    monkeypatch.delenv("WCGW_SHELL_SYSTEMD_SLICE", raising=False)
     monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
     monkeypatch.setattr(
         "wcgw.client.bash_state.bash_state.os.path.exists",
@@ -73,6 +76,9 @@ def test_systemd_scope_can_apply_soft_memory_pressure(monkeypatch) -> None:
     )
     monkeypatch.delenv("WCGW_SHELL_SYSTEMD_SCOPE", raising=False)
     monkeypatch.setenv("WCGW_SHELL_MEMORY_HIGH", "3G")
+    monkeypatch.setenv("WCGW_SHELL_MEMORY_MAX", "5G")
+    monkeypatch.setenv("WCGW_SHELL_MEMORY_SWAP_MAX", "1G")
+    monkeypatch.setenv("WCGW_SHELL_SYSTEMD_SLICE", "wcgw-workers.slice")
     monkeypatch.setenv("XDG_RUNTIME_DIR", "/run/user/1000")
     monkeypatch.setattr(
         "wcgw.client.bash_state.bash_state.os.path.exists",
@@ -81,8 +87,10 @@ def test_systemd_scope_can_apply_soft_memory_pressure(monkeypatch) -> None:
 
     argv = _shell_launch_argv(["/usr/bin/zsh"], RecordingConsole())
 
+    assert "--slice=wcgw-workers.slice" in argv
     assert "MemoryHigh=3G" in argv
-    assert all(not value.startswith("MemoryMax=") for value in argv)
+    assert "MemoryMax=5G" in argv
+    assert "MemorySwapMax=1G" in argv
 
 
 def test_systemd_scope_auto_falls_back_without_user_manager(monkeypatch) -> None:
