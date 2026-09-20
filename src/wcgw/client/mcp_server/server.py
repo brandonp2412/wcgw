@@ -322,7 +322,9 @@ async def leased_state_for_tool(tool_call: TOOLS) -> AsyncIterator[BashState]:
 
 
 HTTP_STATE_IDLE_TIMEOUT_ENV = "WCGW_HTTP_STATE_IDLE_TIMEOUT_SECONDS"
+HTTP_RUNNING_STATE_MAX_IDLE_ENV = "WCGW_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS"
 DEFAULT_HTTP_STATE_IDLE_TIMEOUT_SECONDS = 60.0 * 60.0
+DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS = 6.0 * 60.0 * 60.0
 HTTP_STATE_REAPER_INTERVAL_SECONDS = 60.0
 
 
@@ -349,6 +351,29 @@ def http_state_idle_timeout_seconds() -> float:
     return idle_timeout_seconds
 
 
+def http_running_state_max_idle_seconds() -> float:
+    configured = os.getenv(HTTP_RUNNING_STATE_MAX_IDLE_ENV)
+    if configured is None:
+        return DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS
+    try:
+        max_idle_seconds = float(configured)
+    except ValueError:
+        logger.warning(
+            "%s must be a non-negative number; using %.0f seconds",
+            HTTP_RUNNING_STATE_MAX_IDLE_ENV,
+            DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS,
+        )
+        return DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS
+    if max_idle_seconds < 0:
+        logger.warning(
+            "%s must be non-negative; using %.0f seconds",
+            HTTP_RUNNING_STATE_MAX_IDLE_ENV,
+            DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS,
+        )
+        return DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS
+    return max_idle_seconds
+
+
 def state_last_saved_at(thread_id: str) -> float | None:
     state_file = os.path.join(
         get_bash_state_dir_xdg(), f"{thread_id}_bash_state.json"
@@ -367,9 +392,25 @@ def state_can_be_reaped(
     if STATE_ACTIVE_CALLS.get(thread_id, 0) > 0:
         return False
     last_saved_at = state_last_saved_at(thread_id)
-    if last_saved_at is not None and now - last_saved_at < idle_timeout_seconds:
+    if last_saved_at is None:
+        return not state.has_running_commands()
+
+    idle_seconds = now - last_saved_at
+    if idle_seconds < idle_timeout_seconds:
         return False
-    return not state.has_running_commands()
+    if not state.has_running_commands():
+        return True
+
+    running_max_idle_seconds = http_running_state_max_idle_seconds()
+    if running_max_idle_seconds <= 0 or idle_seconds < running_max_idle_seconds:
+        return False
+
+    logger.warning(
+        "reaping abandoned running WCGW shell state %s after %.0f idle seconds",
+        thread_id,
+        idle_seconds,
+    )
+    return True
 
 
 async def reap_idle_states(now: float, idle_timeout_seconds: float) -> int:

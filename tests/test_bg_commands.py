@@ -82,6 +82,29 @@ def context(temp_dir: str) -> Generator[Context, None, None]:
         print(f"Error during cleanup: {e}")
 
 
+def test_completed_command_releases_pexpect_output(context: Context) -> None:
+    """Completed commands must not pin their full output in persistent shells."""
+    command = BashCommand(
+        action_json=Command(
+            command="python -c 'print(\"x\" * 200000)'",
+            is_background=False,
+            wait_for_seconds=1.0,
+            thread_id=context.bash_state._current_thread_id,
+        )
+    )
+
+    outputs, _ = get_tool_output(
+        context, command, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+    )
+
+    assert outputs
+    assert context.bash_state.state == "repl"
+    assert context.bash_state.pending_output == ""
+    assert context.bash_state._shell.before is None
+    assert context.bash_state._shell.after is None
+    assert context.bash_state._shell.match is None
+
+
 def test_bg_command_basic(context: Context, temp_dir: str) -> None:
     """Test basic background command execution."""
 

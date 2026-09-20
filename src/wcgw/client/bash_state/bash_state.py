@@ -760,6 +760,9 @@ class BashState:
         self.background_shells.clear()
         for state in background_shells:
             state.cleanup()
+        self._pending_output = ""
+        self.last_command = ""
+        self._release_consumed_shell_output()
         self._shell.close(True)
 
     def __enter__(self) -> "BashState":
@@ -859,10 +862,26 @@ class BashState:
             self._state = datetime.datetime.now()
         self._pending_output = last_pending_output
 
+    def _release_consumed_shell_output(self) -> None:
+        """Drop pexpect references to output that callers have already consumed.
+
+        pexpect keeps the complete text preceding the most recent match in
+        before. Its match object can also retain the searched string.
+        Persistent WCGW shells therefore used to pin the last large command
+        output for the lifetime of each chat, even after the command exited.
+        """
+        shell = self.__shell
+        if shell is None:
+            return
+        shell.before = None
+        shell.after = None
+        shell.match = None
+
     def set_repl(self) -> None:
         self._state = "repl"
         self._pending_output = ""
         self.last_command = ""
+        self._release_consumed_shell_output()
 
     def clear_to_run(self) -> None:
         """Check if prompt is clear to enter new command otherwise send ctrl c"""

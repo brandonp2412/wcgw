@@ -616,6 +616,31 @@ async def test_reap_idle_states_recovers_completed_pending_state(
 
 
 @pytest.mark.asyncio
+async def test_reap_idle_states_reaps_abandoned_running_state(
+    setup_bash_state, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    monkeypatch.delenv(server.HTTP_RUNNING_STATE_MAX_IDLE_ENV, raising=False)
+    state = server.new_state("abandoned_running_thread")
+    server.BASH_STATES[state.current_thread_id] = state
+    state.save_state_to_disk()
+
+    state_file = (
+        tmp_path / "wcgw" / "bash_state" / "abandoned_running_thread_bash_state.json"
+    )
+    old_time = time.time() - server.DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS - 60
+    os.utime(state_file, (old_time, old_time))
+
+    with patch.object(state, "has_running_commands", return_value=True):
+        with patch.object(state, "cleanup") as cleanup:
+            assert await server.reap_idle_states(time.time(), 3600) == 1
+
+    cleanup.assert_called_once_with()
+    state.cleanup()
+    assert state.current_thread_id not in server.BASH_STATES
+
+
+@pytest.mark.asyncio
 async def test_reap_idle_states_keeps_active_and_running_states(
     setup_bash_state, tmp_path, monkeypatch
 ):
@@ -686,6 +711,26 @@ def test_http_state_idle_timeout_configuration(monkeypatch):
     assert (
         server.http_state_idle_timeout_seconds()
         == server.DEFAULT_HTTP_STATE_IDLE_TIMEOUT_SECONDS
+    )
+
+
+def test_http_running_state_max_idle_configuration(monkeypatch):
+    monkeypatch.delenv(server.HTTP_RUNNING_STATE_MAX_IDLE_ENV, raising=False)
+    assert (
+        server.http_running_state_max_idle_seconds()
+        == server.DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS
+    )
+
+    monkeypatch.setenv(server.HTTP_RUNNING_STATE_MAX_IDLE_ENV, "0")
+    assert server.http_running_state_max_idle_seconds() == 0
+
+    monkeypatch.setenv(server.HTTP_RUNNING_STATE_MAX_IDLE_ENV, "123.5")
+    assert server.http_running_state_max_idle_seconds() == 123.5
+
+    monkeypatch.setenv(server.HTTP_RUNNING_STATE_MAX_IDLE_ENV, "invalid")
+    assert (
+        server.http_running_state_max_idle_seconds()
+        == server.DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS
     )
 
 
