@@ -734,6 +734,50 @@ def test_http_running_state_max_idle_configuration(monkeypatch):
     )
 
 
+def test_http_graceful_shutdown_configuration(monkeypatch):
+    monkeypatch.delenv(server.HTTP_GRACEFUL_SHUTDOWN_ENV, raising=False)
+    assert (
+        server.http_graceful_shutdown_seconds()
+        == server.DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS
+    )
+
+    monkeypatch.setenv(server.HTTP_GRACEFUL_SHUTDOWN_ENV, "0")
+    assert server.http_graceful_shutdown_seconds() == 0
+
+    monkeypatch.setenv(server.HTTP_GRACEFUL_SHUTDOWN_ENV, "12")
+    assert server.http_graceful_shutdown_seconds() == 12
+
+    monkeypatch.setenv(server.HTTP_GRACEFUL_SHUTDOWN_ENV, "invalid")
+    assert (
+        server.http_graceful_shutdown_seconds()
+        == server.DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS
+    )
+
+    monkeypatch.setenv(server.HTTP_GRACEFUL_SHUTDOWN_ENV, "-1")
+    assert (
+        server.http_graceful_shutdown_seconds()
+        == server.DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS
+    )
+
+
+def test_streamable_http_uses_bounded_graceful_shutdown(monkeypatch):
+    app = object()
+    monkeypatch.setenv(server.HTTP_GRACEFUL_SHUTDOWN_ENV, "7")
+    monkeypatch.setattr(server, "streamable_http_app", lambda *_: app)
+    run = Mock()
+    monkeypatch.setattr(server.uvicorn, "run", run)
+
+    server.run_streamable_http("/bin/bash", "127.0.0.1", 18115)
+
+    run.assert_called_once_with(
+        app,
+        host="127.0.0.1",
+        port=18115,
+        log_level="info",
+        timeout_graceful_shutdown=7,
+    )
+
+
 @pytest.mark.asyncio
 async def test_main(setup_bash_state):
     CONFIG.update(3, 55, 5)  # Ensure CONFIG is set before main()

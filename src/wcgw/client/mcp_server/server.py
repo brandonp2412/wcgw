@@ -323,8 +323,10 @@ async def leased_state_for_tool(tool_call: TOOLS) -> AsyncIterator[BashState]:
 
 HTTP_STATE_IDLE_TIMEOUT_ENV = "WCGW_HTTP_STATE_IDLE_TIMEOUT_SECONDS"
 HTTP_RUNNING_STATE_MAX_IDLE_ENV = "WCGW_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS"
+HTTP_GRACEFUL_SHUTDOWN_ENV = "WCGW_HTTP_GRACEFUL_SHUTDOWN_SECONDS"
 DEFAULT_HTTP_STATE_IDLE_TIMEOUT_SECONDS = 60.0 * 60.0
 DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS = 6.0 * 60.0 * 60.0
+DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS = 8
 HTTP_STATE_REAPER_INTERVAL_SECONDS = 60.0
 
 
@@ -372,6 +374,29 @@ def http_running_state_max_idle_seconds() -> float:
         )
         return DEFAULT_HTTP_RUNNING_STATE_MAX_IDLE_SECONDS
     return max_idle_seconds
+
+
+def http_graceful_shutdown_seconds() -> int:
+    configured = os.getenv(HTTP_GRACEFUL_SHUTDOWN_ENV)
+    if configured is None:
+        return DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS
+    try:
+        timeout_seconds = int(configured)
+    except ValueError:
+        logger.warning(
+            "%s must be a non-negative integer; using %d seconds",
+            HTTP_GRACEFUL_SHUTDOWN_ENV,
+            DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS,
+        )
+        return DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS
+    if timeout_seconds < 0:
+        logger.warning(
+            "%s must be non-negative; using %d seconds",
+            HTTP_GRACEFUL_SHUTDOWN_ENV,
+            DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS,
+        )
+        return DEFAULT_HTTP_GRACEFUL_SHUTDOWN_SECONDS
+    return timeout_seconds
 
 
 def state_last_saved_at(thread_id: str) -> float | None:
@@ -557,4 +582,10 @@ def streamable_http_app(shell_path: str, host: str, port: int) -> FastAPI:
 
 def run_streamable_http(shell_path: str, host: str, port: int) -> None:
     app = streamable_http_app(shell_path, host, port)
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        timeout_graceful_shutdown=http_graceful_shutdown_seconds(),
+    )
