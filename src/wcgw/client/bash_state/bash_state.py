@@ -61,6 +61,7 @@ class Config:
 
 
 CONFIG = Config()
+MAX_PENDING_OUTPUT_CHARS = 100_000
 
 
 def is_mac() -> bool:
@@ -860,7 +861,7 @@ class BashState:
     def set_pending(self, last_pending_output: str) -> None:
         if not isinstance(self._state, datetime.datetime):
             self._state = datetime.datetime.now()
-        self._pending_output = last_pending_output
+        self._pending_output = last_pending_output[-MAX_PENDING_OUTPUT_CHARS:]
 
     def _release_consumed_shell_output(self) -> None:
         """Drop pexpect references to output that callers have already consumed.
@@ -1247,23 +1248,23 @@ def rstrip(lines: list[str]) -> str:
 
 
 def _incremental_text(text: str, last_pending_output: str) -> str:
-    # text = render_terminal_output(text[-100_000:])
-    text = text[-100_000:]
+    text = text[-MAX_PENDING_OUTPUT_CHARS:]
+    last_pending_output = last_pending_output[-MAX_PENDING_OUTPUT_CHARS:]
 
+    current_rendered_lines = render_terminal_output(text)
     if not last_pending_output:
         # This is the first call. We need to offset the position where this program
-        # is being rendered for the new screen versions
+        # is being rendered for the new screen versions.
         # Caveat: no difference in output between a program with leading whitespace and one without.
-        return rstrip(render_terminal_output(text)).lstrip()
-    last_rendered_lines = render_terminal_output(last_pending_output)
-    last_pending_output_rendered = "\n".join(last_rendered_lines)
-    if not last_rendered_lines:
-        return rstrip(render_terminal_output(text))
+        return rstrip(current_rendered_lines).lstrip()
 
-    text = text[len(last_pending_output) :]
-    old_rendered_applied = render_terminal_output(last_pending_output_rendered + text)
-    # True incremental is then
-    rendered = get_incremental_output(last_rendered_lines[:-1], old_rendered_applied)
+    last_rendered_lines = render_terminal_output(last_pending_output)
+    if not last_rendered_lines:
+        return rstrip(current_rendered_lines)
+
+    rendered = get_incremental_output(
+        last_rendered_lines[:-1], current_rendered_lines
+    )
 
     if not rendered:
         return ""

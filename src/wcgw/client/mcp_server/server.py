@@ -576,6 +576,15 @@ def streamable_http_app(shell_path: str, host: str, port: int) -> FastAPI:
             cleanup_states()
 
     app = FastAPI(lifespan=lifespan)
+
+    @app.get("/healthz")
+    async def healthz() -> dict[str, int | str]:
+        return {
+            "status": "ok",
+            "active_calls": sum(STATE_ACTIVE_CALLS.values()),
+            "states": len(BASH_STATES),
+        }
+
     app.mount("/mcp", session_manager.handle_request)
     return app
 

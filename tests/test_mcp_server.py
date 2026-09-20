@@ -17,6 +17,7 @@ from mcp.types import (
 from mcp.types import Tool as ToolParam
 from pydantic import ValidationError
 
+from wcgw.client.bash_state import bash_state as bash_state_module
 from wcgw.client.bash_state.bash_state import CONFIG, BashState
 from wcgw.client.mcp_server import server
 from wcgw.client.mcp_server.server import (
@@ -692,6 +693,54 @@ def test_cleanup_closes_background_shells(setup_bash_state):
     background.close_bg_expect_thread.assert_called_once_with()
     background.cleanup.assert_called_once_with()
     assert state.background_shells == {}
+
+
+def test_pending_output_is_bounded(setup_bash_state):
+    state = setup_bash_state
+    output = "x" * (bash_state_module.MAX_PENDING_OUTPUT_CHARS + 123)
+
+    state.set_pending(output)
+
+    assert len(state.pending_output) == bash_state_module.MAX_PENDING_OUTPUT_CHARS
+    assert state.pending_output == output[-bash_state_module.MAX_PENDING_OUTPUT_CHARS :]
+
+
+def test_incremental_rendering_never_processes_unbounded_output(monkeypatch):
+    rendered_lengths = []
+
+    def fake_render(text):
+        rendered_lengths.append(len(text))
+        return ["same line"]
+
+    monkeypatch.setattr(bash_state_module, "render_terminal_output", fake_render)
+
+    oversized_previous = "p" * (bash_state_module.MAX_PENDING_OUTPUT_CHARS * 4)
+    oversized_current = oversized_previous + (
+        "n" * (bash_state_module.MAX_PENDING_OUTPUT_CHARS * 2)
+    )
+
+    bash_state_module._incremental_text(oversized_current, oversized_previous)
+
+    assert rendered_lengths
+    assert max(rendered_lengths) <= bash_state_module.MAX_PENDING_OUTPUT_CHARS
+
+
+@pytest.mark.asyncio
+async def test_streamable_http_has_independent_health_endpoint(
+    setup_bash_state, monkeypatch
+):
+    monkeypatch.setattr(server, "configure_server", lambda _: "test")
+    server.STATE_ACTIVE_CALLS["busy"] = 2
+    app = server.streamable_http_app("/bin/bash", "127.0.0.1", 18115)
+
+    route = next(route for route in app.routes if route.path == "/healthz")
+    payload = await route.endpoint()
+
+    assert payload == {
+        "status": "ok",
+        "active_calls": 2,
+        "states": len(server.BASH_STATES),
+    }
 
 
 def test_http_state_idle_timeout_configuration(monkeypatch):
