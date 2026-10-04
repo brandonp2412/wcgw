@@ -925,6 +925,45 @@ def test_text_input(context: Context, temp_dir: str) -> None:
     assert "status = process exited" in str(outputs[0])
 
 
+def test_ctrl_d_sends_eof_instead_of_interrupt(
+    context: Context, temp_dir: str
+) -> None:
+    """Ctrl-D must deliver EOF without behaving like Ctrl-C."""
+    _test_init(context, temp_dir)
+
+    command = (
+        "python -u -c \"import signal,sys; "
+        "signal.signal(signal.SIGINT, lambda *_: print('SIGINT', flush=True)); "
+        "print('READY', flush=True); sys.stdin.read(); "
+        "print('EOF', flush=True)\""
+    )
+    cmd = BashCommand(
+        action_json=Command(
+            command=command,
+            wait_for_seconds=0.1,
+            thread_id=context.bash_state._current_thread_id,
+        )
+    )
+    outputs, _ = get_tool_output(
+        context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+    )
+    assert "READY" in str(outputs[0])
+    assert "status = still running" in str(outputs[0])
+
+    cmd = BashCommand(
+        action_json=SendSpecials(
+            send_specials=["Ctrl-d"], thread_id=context.bash_state._current_thread_id
+        )
+    )
+    outputs, _ = get_tool_output(
+        context, cmd, 1.0, lambda x, y: ("", 0.0), 8000, 4000
+    )
+
+    assert "SIGINT" not in str(outputs[0])
+    assert "EOF" in str(outputs[0])
+    assert "status = process exited" in str(outputs[0])
+
+
 def test_ascii_input(context: Context, temp_dir: str) -> None:
     """Test sending ASCII codes."""
     _test_init(context, temp_dir)

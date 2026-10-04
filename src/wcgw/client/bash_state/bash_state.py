@@ -1468,8 +1468,7 @@ def _execute_bash(
                     bash_state.sendintr()
                     is_interrupt = True
                 elif char == "Ctrl-d":
-                    bash_state.sendintr()
-                    is_interrupt = True
+                    bash_state.send("\x04", set_as_command=None)
                 elif char == "Ctrl-z":
                     bash_state.send("\x1a", set_as_command=None)
                 else:
