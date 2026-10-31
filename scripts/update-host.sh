@@ -41,17 +41,24 @@ if [[ "${IN_WCGW_ENVIRONMENT:-}" == "1" ]]; then
   exit 0
 fi
 
-if systemctl --user is-active --quiet glass-wcgw-http.service 2>/dev/null; then
-  systemctl --user restart glass-wcgw-http.service glass-tunnel-http.service
-  systemctl --user is-active --quiet glass-wcgw-http.service glass-tunnel-http.service
-elif systemctl --user is-active --quiet nox-wcgw-http.service 2>/dev/null; then
-  systemctl --user restart nox-wcgw-http.service nox-tunnel-http.service
-  systemctl --user is-active --quiet nox-wcgw-http.service nox-tunnel-http.service
-elif systemctl is-active --quiet openai-mcp-tunnel-pi.service 2>/dev/null; then
-  sudo -n systemctl restart openai-mcp-tunnel-pi.service
-  sudo -n systemctl is-active --quiet openai-mcp-tunnel-pi.service
+mapfile -t user_units < <(
+  systemctl --user list-units --type=service --state=active --no-legend --plain 2>/dev/null |
+    awk '$1 ~ /^[[:alnum:]_.@-]+-wcgw-http[.]service$/ { print $1 }'
+)
+
+if (( ${#user_units[@]} == 1 )); then
+  service="${user_units[0]}"
+  tunnel="${service%-wcgw-http.service}-tunnel-http.service"
+  systemctl --user restart "$service" "$tunnel"
+  systemctl --user is-active --quiet "$service" "$tunnel"
 else
-  fail "could not identify the WCGW service to restart"
+  mapfile -t system_units < <(
+    systemctl list-units --type=service --state=active --no-legend --plain 2>/dev/null |
+      awk '$1 ~ /^openai-mcp-tunnel-[[:alnum:]_-]+[.]service$/ { print $1 }'
+  )
+  (( ${#system_units[@]} == 1 )) || fail "could not identify one WCGW service to restart"
+  sudo -n systemctl restart "${system_units[0]}"
+  sudo -n systemctl is-active --quiet "${system_units[0]}"
 fi
 
 printf 'wcgw updated and restarted at %s\n' "$commit"
